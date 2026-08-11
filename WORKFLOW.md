@@ -1,6 +1,6 @@
 # Pre-CU Restoration Workflow
 
-**Project:** Modify an NGE-era SWG Source server toward authentic Pre-CU (Pre-Combat Update) gameplay while keeping an NGE-compatible client.
+**Project:** Modify an NGE-era SWG Source server toward Pre-CU (Pre-Combat Update) **skill-based professions and combat abilities**, while keeping an NGE-compatible client and leaving stable NGE systems (loot, world, crafting, etc.) alone until needed.
 
 **Owner:** daquorm89 (`douweheuvel@gmail.com`)  
 **Runnable server tree (local):** `~/repos/swg-main/`  
@@ -10,23 +10,32 @@ This file is the standing operating procedure for **humans and AI agents**. Read
 
 ---
 
-## 1. Project goal (full scope)
+## 1. Project goal (current scope)
 
-Restore **Pre-CU skill-based professions and world rules** on top of an NGE server stack:
+Restore **Pre-CU skill-based professions and combat presentation** on top of an NGE server stack, while **keeping NGE systems that already work** until they block Pre-CU goals.
 
-| Area | Pre-CU intent | Notes |
-|------|----------------|-------|
-| **Professions / skills** | Skill trees, boxes, XP types, titles from Pre-CU | Not NGE expertise wheels as primary progression |
-| **Combat abilities** | Weapon specials, states, DoTs, posture, Jedi powers | Hybrid: `combat_data.tab` + thin Java (see §5) |
-| **Combat math / balance** | Pre-CU damage, costs, ranges, defenses where practical | Reconnect dormant data; avoid full engine rewrite |
+### In scope now
+
+| Area | Intent | Notes |
+|------|--------|-------|
+| **Professions / skills** | Pre-CU skill trees, boxes, XP types, titles | Not NGE expertise wheels as primary progression |
 | **Commands** | Pre-CU command names, hooks, grant rules | `command_table` + scriptHooks |
-| **Crafting / resources** | Pre-CU schematics, resource rules as targeted | Only when in active scope |
-| **Items / weapons / armor** | Pre-CU templates, certs, mods | Client must still load assets |
-| **Creatures / loot / world** | Pre-CU spawns, lairs, loot tables as needed | `serverdata` / datatables |
-| **Jedi / Force** | Pre-CU visibility, costs, powers progression | Partial; Force pool may lag vigor mapping |
+| **Combat abilities** | Weapon specials, states, DoTs, posture, Jedi powers | Hybrid: `combat_data.tab` + thin Java (see §5) |
+| **Combat math / balance** | **May remain NGE-based** | Allowed as long as it can *simulate* Pre-CU feel and does **not** conflict with other Pre-CU changes (abilities, states, grants, weapons) |
+| **Items / weapons / armor** (as needed for professions) | Templates, certs, mods required for Pre-CU lines | Client must still load assets |
+| **Jedi / Force** | Pre-CU powers / progression as targeted | Partial; Force pool may lag vigor mapping |
 | **UI / client** | Must remain NGE-client compatible | No client edits unless explicitly approved |
 
-**Combat is one subsystem among many.** Do not treat the combat hybrid as the whole project; do not break professions, grants, or world data to “finish” a combat tweak.
+### Explicitly out of scope for now
+
+| Area | Policy |
+|------|--------|
+| **Creatures / spawns / lairs** | **Leave NGE** until further notice |
+| **Loot tables** | **Leave NGE** until further notice |
+| **World / planet content** | **Leave NGE** until further notice |
+| **Crafting / resources / schematics** | **Leave NGE**; no issues found yet — revisit only if Pre-CU professions require it |
+
+**Combat is one subsystem among several in-scope systems** (skills, commands, abilities). Do not treat the combat hybrid as the whole project. Do not expand into loot/world/crafting “while you’re there” without an explicit decision to put them in scope.
 
 ---
 
@@ -36,7 +45,7 @@ Restore **Pre-CU skill-based professions and world rules** on top of an NGE serv
 
 1. **Reconnect before inventing.** Prefer dormant Pre-CU tables, scripts, and NGE columns/buffs over new frameworks.
 2. **Client compatibility.** NGE client must load and play. Use NGE-safe animations, effects, and datatable schemas.
-3. **Phased delivery.** Make systems *usable* first (grants fire, abilities execute, skills train), then deepen fidelity (states, pool damage, exact curves).
+3. **Phased delivery.** Make systems *usable* first (grants fire, abilities execute, skills train), then deepen fidelity (states, tighter simulation). Exact Pre-CU combat curves are optional while NGE math can simulate the intended feel.
 4. **Data-driven where possible.** Datatables and command tables first; Java only for gates, hooks, or missing engine support.
 5. **No silent scope creep.** If a change touches professions + combat + loot, split into clear commits/PRs.
 
@@ -134,16 +143,17 @@ See **§5** for detail. Summary:
 - Costs may temporarily map to `vigorCost` until a true Force pool is restored.
 - Prefer existing Jedi scripts/tables before new systems.
 
-### 4.5 Crafting, resources, items
+### 4.5 Items (limited)
 
-- Schematics, categories, resource classes, tool behavior.
-- Weapon/armor templates and certifications aligned with Pre-CU professions.
+- Touch weapon/armor/item data **only when required** for Pre-CU profession certs or ability use.
 - Keep client asset paths valid.
+- Do not run a general Pre-CU item conversion pass unless scoped.
 
-### 4.6 World, NPCs, loot
+### 4.6 Crafting, resources, creatures, loot, world — OUT OF SCOPE (for now)
 
-- Spawn tables, lair data, loot tables, quest hooks as required for Pre-CU loop.
-- Changes often land in `serverdata` and shared datatables; coordinate with deploy/sync practice.
+- **Crafting / resources:** leave NGE; no known blockers yet.
+- **Creatures / spawns / lairs, loot tables, world content:** leave NGE until explicitly brought in scope.
+- Agents must **not** “fix” or Pre-CU-ify these while working on skills/combat unless the project lead expands scope.
 
 ### 4.7 C++ engine (`src`)
 
@@ -186,7 +196,7 @@ See **§5** for detail. Summary:
 | **B** | DoT tick verification / tuning | Ongoing as needed |
 | **C/D** | Status effects via NGE buffs | Partially mapped (see below) |
 | **E** | Weapon restrictions in Java | Done on master (`precuWeaponOk`) |
-| **Later** | Pool-specific damage, true Force pool, posture API fidelity | Not done |
+| **Later** | Pool-specific damage, true Force pool, posture API fidelity | Not done; only if NGE simulation is insufficient |
 
 ### 5.4 Status effect buff mapping (current)
 
@@ -314,15 +324,15 @@ cd ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/
 
 ## 9. Suggested roadmap (high level)
 
-Order is guidance, not a rigid schedule:
+Order is guidance, not a rigid schedule. Items marked *deferred* stay NGE until scope expands:
 
-1. **Profession/skill grant spine** — can train Pre-CU lines and receive commands.  
+1. **Profession/skill grant spine** — train Pre-CU lines and receive commands.  
 2. **Combat hybrid** — abilities execute, weapons gated, basic DoTs/buffs (in progress).  
-3. **Balance pass** — costs/damage/XP feel Pre-CU-like.  
-4. **Jedi / Force** — powers and visibility rules.  
-5. **Crafting & economy** — schematics/resources as needed for the loop.  
-6. **World/loot** — support the profession loop in open world.  
-7. **Engine fidelity** — only remaining gaps that data/Java cannot cover.
+3. **Combat feel pass** — tune costs/damage/states so Pre-CU abilities feel right **without requiring pure Pre-CU math** if NGE math already works.  
+4. **Jedi / Force** — powers and visibility rules as needed.  
+5. **Items/certs only as required** by professions.  
+6. *Deferred:* crafting, resources, creatures, loot, world content.  
+7. *Last resort:* C++ engine changes for gaps data/Java cannot cover.
 
 ---
 
