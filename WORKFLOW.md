@@ -8,6 +8,8 @@
 
 This file is the standing operating procedure for **humans and AI agents**. Read it before changing code, data, or skills. Prefer updating this document when process changes, rather than relying on chat history.
 
+**Live project status (checkboxes):** see [`PROGRESS.md`](./PROGRESS.md). Update it when sub-targets are finished.
+
 ---
 
 ## 1. Project goal (current scope)
@@ -159,9 +161,11 @@ See **§5** for detail. Summary:
 
 - Only when Java/data cannot express the rule (rare).
 - Files: `.cpp` / `.h` under the **`src` submodule** (engine + game).
-- Build on the server machine with **`ant compile_src`** (see §6.3). Stop the server before/after replacing binaries.
-- Requires full rebuild discipline and extra testing; treat as last resort.
-- PRs that touch `src` should note rebuild time and binary list affected (GameServer, etc.).
+- On the server machine, rebuild with **narrow Make targets** from the CMake dir (usually `x/`):  
+  `make -j$(nproc) serverGame && make -j$(nproc) SwgGameServer` (see §6.3).  
+  Do **not** default to `ant compile_src` / full rebuilds.
+- Restart only the processes whose binaries you relinked.
+- Treat C++ as last resort; PRs should list which targets were rebuilt.
 
 ---
 
@@ -256,71 +260,73 @@ Prefer checking these into `tools/` or `docs/scripts/` on a feature branch if th
 
 - **Data:** edit `.tab` (or generate via script); keep schema column counts intact.
 - **Scripts:** thin methods; match scriptHook names exactly.
-- **Engine (`src`):** only with explicit justification; rebuild with `ant compile_src` (§6.3).
+- **Engine (`src`):** only with explicit justification; rebuild with narrow `make` targets in `x/` (§6.3).
 
 ### 6.3 Build on the server machine
 
-Always build from the **runnable** tree (`~/repos/swg-main/`). Stop the server before replacing C++ binaries.
+Always build from the **runnable** tree (typically `~/repos/swg-main/` or `~/swg-main/` — use your real path).
+
+**Rule: rebuild only what you touched.** Prefer the narrowest command. Do **not** run full-tree Ant compiles (`ant compile`, `ant compile_src`) for routine one-file or one-library edits.
+
+#### Java — one `.java` file at a time
 
 ```bash
-cd ~/repos/swg-main
-# Optional but recommended when replacing engine binaries:
-ant stop
-```
-
-#### Java (`.java` under `dsrc`)
-
-```bash
-cd ~/repos/swg-main
-# Single file (fast iteration)
+cd ~/repos/swg-main   # or ~/swg-main
 ./utils/build_java_single.sh dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_actions.java
-
-# Or full Java compile via Ant
-ant compile_java
 ```
 
-#### Datatables (`.tab` → `.iff`)
+- Pass the **full path under `dsrc`** to the single changed file.
+- Repeat the command per file if several scripts changed.
+- Avoid `ant compile_java` unless you intentionally want a full Java rebuild.
+
+#### Datatables — one `.tab` (or the set you edited)
 
 ```bash
 cd ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/
-~/repos/swg-main/build/bin/DataTableTool -i combat_data.tab
-# Or: ant compile_tab
-# Sync .iff into the path your GameServer actually reads (often serverdata/) if required
+DataTableTool -i combat_data.tab
+# Tool is often on PATH via build/bin; if not:
+# ~/repos/swg-main/build/bin/DataTableTool -i combat_data.tab
 ```
 
-#### C++ engine (`.cpp` / `.h` under `src`)
+Sync the resulting `.iff` to the path the GameServer reads (e.g. `serverdata/`) if your deploy requires it. Prefer this over `ant compile_tab` for a single table.
 
-C++ lives in the **`src` submodule**. Ant configures CMake then runs `make`.
+#### C++ — narrow `make` targets (`.cpp` / `.h` under `src`)
+
+C++ is built from the **CMake build directory**. On this project that directory is commonly named **`x`** (some stock Ant setups use `build/` instead — use whichever exists on the machine).
+
+**Standard narrow rebuild after game/combat engine edits:**
+
+```bash
+cd ~/swg-main/x    # CMake build dir (or ~/repos/swg-main/x)
+make -j$(nproc) serverGame
+make -j$(nproc) SwgGameServer
+```
+
+| Target | Role |
+|--------|------|
+| `serverGame` | Game library / objects affected by most `src/game` and shared engine edits |
+| `SwgGameServer` | GameServer binary that must be relinked after `serverGame` |
+
+- Rebuild **only these** when a few `.cpp`/`.h` files change and those targets are sufficient.
+- If you changed a different binary (LoginServer, ConnectionServer, etc.), `make -j$(nproc) <ThatTarget>` instead of rebuilding everything.
+- There is no single-TU helper equivalent to `build_java_single.sh`; Make still compiles dirty objects, but **do not** default to rebuilding every server target.
+- Restart **GameServer** (and only other processes whose binaries you relinked) so the new binary is loaded.
+
+**When the CMake tree is missing or stale** (first setup, clean, or generator change), configure once, then use narrow makes again:
 
 ```bash
 cd ~/repos/swg-main
-
-# Pull src changes if needed
-cd src && git pull && cd ..
-
-# Compile C++ server binaries only (GameServer, LoginServer, etc.)
-ant compile_src
-
-# Station/chat C++ (only if stationapi changed)
-ant compile_chat
+ant prepare_src_x86   # or prepare_src on non-x86; creates/updates the CMake build dir
+cd x                  # or build/ if that is your cmake output dir
+make -j$(nproc) serverGame
+make -j$(nproc) SwgGameServer
 ```
 
-Notes:
+**Avoid for routine work:** `ant compile_src` and `ant compile` (full C++ / full stack). Reserve them for intentional full rebuilds only.
 
-- `ant compile_src` depends on `prepare_src` / `prepare_src_x86` (CMake) and compiles with `make -j$(nproc)`.
-- Build type comes from `build.properties` / `local.properties` (`src_build_type`, often `Release`). Prefer overrides in **`local.properties`**, not committed `build.properties`.
-- There is **no** supported one-file `.cpp` rebuild helper like `build_java_single.sh`; changing a header that many TUs include can force a large rebuild.
-- After `compile_src`, restart the full stack so processes load the new binaries (`ant stop` then your usual start script, e.g. `./startServer.sh`).
+#### Station/chat C++
 
-#### “Compile everything that changed”
-
-```bash
-cd ~/repos/swg-main
-ant compile
-# runs: compile_src + compile_chat + compile_java + compile_miff + compile_tab + compile_tpf + load_templates
-```
-
-Use this after multi-layer changes; use the narrower targets for day-to-day iteration.
+Only if `stationapi` sources changed — use that project’s narrow build (or `ant compile_chat` only when necessary). Not part of normal Pre-CU skill/combat iteration.
 
 ### 6.4 Git publish
 
@@ -333,7 +339,7 @@ Use this after multi-layer changes; use the narrower targets for day-to-day iter
 
 - [ ] Feature branch + PR on correct fork/base  
 - [ ] Merged to master (submodule then parent if both)  
-- [ ] Server tree updated and rebuilt (`ant compile_src` if `src` changed; Java/tab targets otherwise)  
+- [ ] Server tree updated and **narrowly** rebuilt (Java single-file / DataTableTool / `make serverGame`+`SwgGameServer` as appropriate — not full-tree Ant)  
 - [ ] In-game smoke test notes (pass/fail)  
 - [ ] `WORKFLOW.md` updated if rules/phases changed  
 
@@ -371,9 +377,10 @@ Use this after multi-layer changes; use the narrower targets for day-to-day iter
 6. Forgetting **DataTableTool** / `.iff` sync after `.tab` edits.  
 7. Forgetting **`git submodule update`** on the server after merge.  
 8. Inventing git author identities — always `daquorm89 <douweheuvel@gmail.com>`.  
-9. Large C++ changes without a rollback plan or without running **`ant compile_src`** on the server tree.  
-10. Editing `.cpp`/`.h` but only rebuilding Java — engine binaries stay old until `ant compile_src` + process restart.  
-11. Breaking NGE client assumptions (missing anims, bad datatable schema).
+9. Large C++ changes without a rollback plan.  
+10. Editing `.cpp`/`.h` but only rebuilding Java — run `make … serverGame` and `SwgGameServer` in the CMake dir (`x/`), then restart GameServer.  
+11. Using full `ant compile` / `ant compile_src` for a one-file change — wasteful and unnecessary when narrow targets exist.  
+12. Breaking NGE client assumptions (missing anims, bad datatable schema).
 
 ---
 
