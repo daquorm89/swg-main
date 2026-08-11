@@ -8,6 +8,8 @@
 
 This file is the standing operating procedure for **humans and AI agents**. Read it before changing code, data, or skills. Prefer updating this document when process changes, rather than relying on chat history.
 
+**Live project status (checkboxes):** see [`PROGRESS.md`](./PROGRESS.md). Update it when sub-targets are finished.
+
 ---
 
 ## 1. Project goal (current scope)
