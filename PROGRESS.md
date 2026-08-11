@@ -50,7 +50,7 @@ Canonical process rules: [`WORKFLOW.md`](./WORKFLOW.md).
 
 **Notes**
 
-- Weapon-check branch merged (`precuWeaponOk`). Confirm on **your** server after pull + `build_java_single.sh` for `combat_actions.java`.
+- Weapon-check merged (`precuWeaponOk`): wrong weapon blocks damage/aggro and shows `no_attack_wrong_weapon`. Follow-up branch `feature/precu-weapon-fail-no-anim` calls `clearQueue()` on reject to reduce client-predicted hit/fire anim (verify after merge).
 - Status buffs are interim (e.g. warcry → suppressing-style buff; KD/posture may be stand-ins).
 - Out of scope here: pure Pre-CU combat curves, true Force pool, creatures/loot/world.
 
@@ -58,29 +58,6 @@ Canonical process rules: [`WORKFLOW.md`](./WORKFLOW.md).
 
 ---
 
-### P2 — Pre-CU profession / skill grant spine
-
-**Goal:** Players can train Pre-CU skill lines (boxes, XP types, prerequisites) and **receive the correct commands** when a box is learned. NGE expertise is not the primary progression.
-
-**Primary paths:** skill/profession datatables + grant scripts under `dsrc` (locate before editing); `command_table` / scriptHooks
-
-| ID | Sub-target | Status |
-|----|------------|--------|
-| P2.1 | Inventory which Pre-CU profession lines are already present vs NGE-only | [ ] |
-| P2.2 | Ensure skill boxes grant the hybrid combat commands (scriptHook names match Java) | [ ] |
-| P2.3 | Prerequisites / XP types work for at least one full combat line (e.g. Marksman → elite) | [ ] |
-| P2.4 | Same for one non-combat or support line if in scope (medic/entertainer/etc.) | [ ] |
-| P2.5 | Titles / skill mods for trained boxes verified in-game | [ ] |
-| P2.6 | Document how to add the next profession line (pointer in WORKFLOW or here) | [ ] |
-
-**Notes**
-
-- Do not block on crafting/resources (out of scope).
-- Items/certs only if a box cannot function without them (minimal).
-
-**Exit criteria:** At least one complete Pre-CU combat profession train→grant→use loop is verified; P2.1–P2.6 done or consciously deferred into a new project.
-
----
 
 ### P3 — Project process & agent onboarding
 
@@ -100,13 +77,12 @@ Canonical process rules: [`WORKFLOW.md`](./WORKFLOW.md).
 
 ## Completed projects
 
-_None yet. When a project finishes, move it here like this:_
+### P2 — Pre-CU profession / skill grant spine (completed 2026-08-11)
 
-```markdown
-### Px — Title (completed YYYY-MM-DD)
+Project lead reports profession/skill grant spine already working for current needs (train Pre-CU lines, receive commands). Re-open a new project only if a specific line/grant gap appears.
 
-Summary of what shipped. Link key PRs/commits if useful.
-```
+---
+
 
 ---
 
@@ -128,3 +104,4 @@ Per `WORKFLOW.md` — do not open Active projects for these without a scope chan
 | Date | Change |
 |------|--------|
 | 2026-08-11 | Initial PROGRESS.md: P1 combat hybrid, P2 skill spine, P3 process docs |
+| 2026-08-11 | P2 marked completed (professions already done). Note residual wrong-weapon client anim; clearQueue follow-up |
