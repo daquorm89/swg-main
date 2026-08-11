@@ -108,9 +108,15 @@ git submodule update --init --recursive
 ~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_actions.java
 ~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_base.java
 
-# Datatable source (edit) + compiled IFF (beside .tab after DataTableTool)
+# Datatable source (edit .tab under dsrc)
 ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.tab
-~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
+
+# Compiled IFF output (DataTableTool writes under data/, NOT next to the .tab)
+~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
+
+# Other runtime copies that must be kept in sync after compile
+~/repos/swg-main/data/sku.0/sys.server/compiled/game/datatables/combat/combat_data.iff
+~/repos/swg-main/serverdata/datatables/combat/combat_data.iff
 
 # DataTableTool
 ~/repos/swg-main/build/bin/DataTableTool
@@ -292,8 +298,11 @@ cd ~/repos/swg-main
 
 **Required sequence after editing a `.tab`:**
 
-1. Compile `.tab` → `.iff` with DataTableTool (writes `.iff` next to the `.tab`).
-2. **Copy the new `.iff` to every location under `~/repos/swg-main` that already has a file with that same name** (runtime `data/`, `serverdata/`, other mirrors). Skipping this leaves the GameServer on stale numbers.
+1. Compile `.tab` → `.iff` with DataTableTool.
+   - **Important:** the tool does **not** write next to the `.tab` under `dsrc/`.
+   - It prints `SUCCESS creating data table: …` — that path is the real output, almost always under:
+     `~/repos/swg-main/data/sku.0/sys.<server|shared>/compiled/game/datatables/<category>/<file>.iff`
+2. Set `SRC` to **that SUCCESS path** (or the matching `data/…` path), then **copy** the new `.iff` to every other existing copy under `~/repos/swg-main` (`data/…/sys.server/…`, `serverdata/…`, etc.).
 3. Restart GameServer.
 
 **Preferred compile pattern (project standard):**
@@ -302,6 +311,8 @@ cd ~/repos/swg-main
 # Template — server root is always ~/repos/swg-main
 cd ~/repos/swg-main/dsrc/sku.0/sys.<server|shared>/compiled/game/datatables/<category>/
 ~/repos/swg-main/build/bin/DataTableTool -i <file>.tab
+# Read the SUCCESS line — that is SRC. Typical form:
+# ~/repos/swg-main/data/sku.0/sys.<server|shared>/compiled/game/datatables/<category>/<file>.iff
 ```
 
 **Concrete example — combat_data (compile + distribute .iff):**
@@ -309,8 +320,9 @@ cd ~/repos/swg-main/dsrc/sku.0/sys.<server|shared>/compiled/game/datatables/<cat
 ```bash
 cd ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/
 ~/repos/swg-main/build/bin/DataTableTool -i combat_data.tab
+# SUCCESS creating data table: /home/swg/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
 
-SRC=~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
+SRC=~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
 
 # List every existing copy
 find ~/repos/swg-main -name 'combat_data.iff' -print
@@ -322,15 +334,37 @@ find ~/repos/swg-main -name 'combat_data.iff' ! -path "$SRC" -exec cp -f "$SRC" 
 find ~/repos/swg-main -name 'combat_data.iff' -printf '%T+ %p\n'
 ```
 
-Same pattern for any other table: build with `DataTableTool -i <file>.tab`, set `SRC` to the new `.iff` beside the source `.tab`, then:
+**Concrete example — command_table (shared + server sources):**
+
+```bash
+# Shared source .tab
+cd ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/command/
+~/repos/swg-main/build/bin/DataTableTool -i command_table.tab
+# SUCCESS → ~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/command/command_table.iff
+
+SRC=~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/command/command_table.iff
+find ~/repos/swg-main -name 'command_table.iff' -print
+find ~/repos/swg-main -name 'command_table.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;
+
+# If you also edited the server copy of the .tab, compile it too:
+cd ~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/datatables/command/
+~/repos/swg-main/build/bin/DataTableTool -i command_table.tab
+# SUCCESS → ~/repos/swg-main/data/sku.0/sys.server/compiled/game/datatables/command/command_table.iff
+# Prefer the shared output as the single source of truth for distribution unless server-only rows differ.
+SRC=~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/command/command_table.iff
+find ~/repos/swg-main -name 'command_table.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;
+```
+
+Same pattern for any other table: build with `DataTableTool -i <file>.tab`, set `SRC` from the **SUCCESS** line (under `data/`), then:
 
 ```bash
 find ~/repos/swg-main -name '<file>.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;
 ```
 
 - Tool path: `~/repos/swg-main/build/bin/DataTableTool` (full path; do not rely on `PATH`).
-- Run from the directory that contains the `.tab`; the tool writes the `.iff` next to it under `dsrc/`.
-- Confirm the source `.iff` updated: `ls -la ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff`
+- Run from the directory that contains the `.tab` under `dsrc/`.
+- **Never** set `SRC` to a path under `dsrc/…/*.iff` — that file is usually not created.
+- Confirm: `ls -la ~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/<category>/<file>.iff`
 - After the `find` + `cp` pass, restart GameServer.
 
 Prefer this over `ant compile_tab` when only one table changed.
@@ -419,7 +453,7 @@ Only if `stationapi` sources changed — use that project’s narrow build (or `
 3. Core3 animation names without NGE mapping (`*_medium`, etc.).  
 4. PR compare UI defaulting to upstream **SWG-Source** — force `daquorm89` base.  
 5. Editing parent repo only while the real change is in **`dsrc`**.  
-6. Forgetting **DataTableTool** after `.tab` edits, or compiling the `.iff` but **not copying it to every existing `*.iff` under `~/repos/swg-main`** (GameServer keeps reading a stale copy). Pattern: `cd …/datatables/<category>/` then `~/repos/swg-main/build/bin/DataTableTool -i <file>.tab`, then `find ~/repos/swg-main -name '<file>.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;`.  
+6. Forgetting **DataTableTool** after `.tab` edits, setting `SRC` to a non-existent `dsrc/…/*.iff` path (tool writes under `data/…`), or compiling but **not copying** the new `.iff` to every existing copy under `~/repos/swg-main`. Always use the SUCCESS path as `SRC`.  
 7. Giving truncated paths (`serverdata/.../file.iff`) in docs or agent instructions — always full paths from the server root.  
 8. Forgetting **`git submodule update`** on the server after merge.  
 9. Inventing git author identities — always `daquorm89 <douweheuvel@gmail.com>`.  
