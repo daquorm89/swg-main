@@ -109,11 +109,11 @@ git submodule update --init --recursive
 ~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_base.java
 
 # Datatable source (edit) + compiled IFF (beside .tab after DataTableTool)
-~/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.tab
-~/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
+~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.tab
+~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
 
 # DataTableTool
-~/swg-main/build/bin/DataTableTool
+~/repos/swg-main/build/bin/DataTableTool
 ```
 
 Exact skill-table and profession paths vary; always locate by name in `dsrc` before editing.
@@ -271,14 +271,14 @@ Prefer checking these into `tools/` or `docs/scripts/` on a feature branch if th
 
 ### 6.3 Build on the server machine
 
-Always build from the **runnable** tree (typically `~/repos/swg-main/` or `~/swg-main/` — use your real path).
+Always build from the **runnable** tree: `~/repos/swg-main/` (full paths only; do not invent alternate roots in instructions).
 
 **Rule: rebuild only what you touched.** Prefer the narrowest command. Do **not** run full-tree Ant compiles (`ant compile`, `ant compile_src`) for routine one-file or one-library edits.
 
 #### Java — one `.java` file at a time
 
 ```bash
-cd ~/repos/swg-main   # or ~/swg-main
+cd ~/repos/swg-main
 ./utils/build_java_single.sh dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_actions.java
 ```
 
@@ -288,29 +288,50 @@ cd ~/repos/swg-main   # or ~/swg-main
 
 #### Datatables — one `.tab` (or the set you edited)
 
-**Do not use truncated paths** (`serverdata/...`). Always write the full directory.
+**Do not use truncated paths** (`serverdata/...`). Always write the **full path** from the server root (`~/repos/swg-main/...`).
+
+**Required sequence after editing a `.tab`:**
+
+1. Compile `.tab` → `.iff` with DataTableTool (writes `.iff` next to the `.tab`).
+2. **Copy the new `.iff` to every location under `~/repos/swg-main` that already has a file with that same name** (runtime `data/`, `serverdata/`, other mirrors). Skipping this leaves the GameServer on stale numbers.
+3. Restart GameServer.
 
 **Preferred compile pattern (project standard):**
 
 ```bash
-# Template
-cd ~/swg-main/dsrc/sku.0/sys.<server|shared>/compiled/game/datatables/<category>/
-~/swg-main/build/bin/DataTableTool -i <file>.tab
+# Template — server root is always ~/repos/swg-main
+cd ~/repos/swg-main/dsrc/sku.0/sys.<server|shared>/compiled/game/datatables/<category>/
+~/repos/swg-main/build/bin/DataTableTool -i <file>.tab
 ```
 
-**Concrete example — combat_data:**
+**Concrete example — combat_data (compile + distribute .iff):**
 
 ```bash
-cd ~/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/
-~/swg-main/build/bin/DataTableTool -i combat_data.tab
+cd ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/
+~/repos/swg-main/build/bin/DataTableTool -i combat_data.tab
+
+SRC=~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
+
+# List every existing copy
+find ~/repos/swg-main -name 'combat_data.iff' -print
+
+# Overwrite every other copy with the newly built one
+find ~/repos/swg-main -name 'combat_data.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;
+
+# Confirm timestamps match
+find ~/repos/swg-main -name 'combat_data.iff' -printf '%T+ %p\n'
 ```
 
-- Tool path: `~/swg-main/build/bin/DataTableTool` (full path; do not rely on `PATH`).
-- Run from the directory that contains the `.tab`; the tool writes the `.iff` next to it:
-  `~/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff`
-- Server root on some machines is `~/repos/swg-main` instead of `~/swg-main` — use the real root, still with full paths.
-- Confirm: `ls -la ~/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff`
-- Then restart GameServer.
+Same pattern for any other table: build with `DataTableTool -i <file>.tab`, set `SRC` to the new `.iff` beside the source `.tab`, then:
+
+```bash
+find ~/repos/swg-main -name '<file>.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;
+```
+
+- Tool path: `~/repos/swg-main/build/bin/DataTableTool` (full path; do not rely on `PATH`).
+- Run from the directory that contains the `.tab`; the tool writes the `.iff` next to it under `dsrc/`.
+- Confirm the source `.iff` updated: `ls -la ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff`
+- After the `find` + `cp` pass, restart GameServer.
 
 Prefer this over `ant compile_tab` when only one table changed.
 
@@ -321,7 +342,7 @@ C++ is built from the **CMake build directory**. On this project that directory 
 **Standard narrow rebuild after game/combat engine edits:**
 
 ```bash
-cd ~/swg-main/x    # CMake build dir (or ~/repos/swg-main/x)
+cd ~/repos/swg-main/x    # CMake build dir
 make -j$(nproc) serverGame
 make -j$(nproc) SwgGameServer
 ```
@@ -398,7 +419,7 @@ Only if `stationapi` sources changed — use that project’s narrow build (or `
 3. Core3 animation names without NGE mapping (`*_medium`, etc.).  
 4. PR compare UI defaulting to upstream **SWG-Source** — force `daquorm89` base.  
 5. Editing parent repo only while the real change is in **`dsrc`**.  
-6. Forgetting **DataTableTool** after `.tab` edits (from the category dir: `~/swg-main/build/bin/DataTableTool -i <file>.tab`).  
+6. Forgetting **DataTableTool** after `.tab` edits, or compiling the `.iff` but **not copying it to every existing `*.iff` under `~/repos/swg-main`** (GameServer keeps reading a stale copy). Pattern: `cd …/datatables/<category>/` then `~/repos/swg-main/build/bin/DataTableTool -i <file>.tab`, then `find ~/repos/swg-main -name '<file>.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;`.  
 7. Giving truncated paths (`serverdata/.../file.iff`) in docs or agent instructions — always full paths from the server root.  
 8. Forgetting **`git submodule update`** on the server after merge.  
 9. Inventing git author identities — always `daquorm89 <douweheuvel@gmail.com>`.  
