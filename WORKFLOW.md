@@ -158,7 +158,10 @@ See **§5** for detail. Summary:
 ### 4.7 C++ engine (`src`)
 
 - Only when Java/data cannot express the rule (rare).
+- Files: `.cpp` / `.h` under the **`src` submodule** (engine + game).
+- Build on the server machine with **`ant compile_src`** (see §6.3). Stop the server before/after replacing binaries.
 - Requires full rebuild discipline and extra testing; treat as last resort.
+- PRs that touch `src` should note rebuild time and binary list affected (GameServer, etc.).
 
 ---
 
@@ -253,20 +256,71 @@ Prefer checking these into `tools/` or `docs/scripts/` on a feature branch if th
 
 - **Data:** edit `.tab` (or generate via script); keep schema column counts intact.
 - **Scripts:** thin methods; match scriptHook names exactly.
-- **Engine (`src`):** only with explicit justification.
+- **Engine (`src`):** only with explicit justification; rebuild with `ant compile_src` (§6.3).
 
 ### 6.3 Build on the server machine
 
+Always build from the **runnable** tree (`~/repos/swg-main/`). Stop the server before replacing C++ binaries.
+
 ```bash
-# Java example (combat)
 cd ~/repos/swg-main
+# Optional but recommended when replacing engine binaries:
+ant stop
+```
+
+#### Java (`.java` under `dsrc`)
+
+```bash
+cd ~/repos/swg-main
+# Single file (fast iteration)
 ./utils/build_java_single.sh dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_actions.java
 
-# Datatable example
+# Or full Java compile via Ant
+ant compile_java
+```
+
+#### Datatables (`.tab` → `.iff`)
+
+```bash
 cd ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/
 ~/repos/swg-main/build/bin/DataTableTool -i combat_data.tab
+# Or: ant compile_tab
 # Sync .iff into the path your GameServer actually reads (often serverdata/) if required
 ```
+
+#### C++ engine (`.cpp` / `.h` under `src`)
+
+C++ lives in the **`src` submodule**. Ant configures CMake then runs `make`.
+
+```bash
+cd ~/repos/swg-main
+
+# Pull src changes if needed
+cd src && git pull && cd ..
+
+# Compile C++ server binaries only (GameServer, LoginServer, etc.)
+ant compile_src
+
+# Station/chat C++ (only if stationapi changed)
+ant compile_chat
+```
+
+Notes:
+
+- `ant compile_src` depends on `prepare_src` / `prepare_src_x86` (CMake) and compiles with `make -j$(nproc)`.
+- Build type comes from `build.properties` / `local.properties` (`src_build_type`, often `Release`). Prefer overrides in **`local.properties`**, not committed `build.properties`.
+- There is **no** supported one-file `.cpp` rebuild helper like `build_java_single.sh`; changing a header that many TUs include can force a large rebuild.
+- After `compile_src`, restart the full stack so processes load the new binaries (`ant stop` then your usual start script, e.g. `./startServer.sh`).
+
+#### “Compile everything that changed”
+
+```bash
+cd ~/repos/swg-main
+ant compile
+# runs: compile_src + compile_chat + compile_java + compile_miff + compile_tab + compile_tpf + load_templates
+```
+
+Use this after multi-layer changes; use the narrower targets for day-to-day iteration.
 
 ### 6.4 Git publish
 
@@ -279,7 +333,7 @@ cd ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/
 
 - [ ] Feature branch + PR on correct fork/base  
 - [ ] Merged to master (submodule then parent if both)  
-- [ ] Server tree updated and rebuilt  
+- [ ] Server tree updated and rebuilt (`ant compile_src` if `src` changed; Java/tab targets otherwise)  
 - [ ] In-game smoke test notes (pass/fail)  
 - [ ] `WORKFLOW.md` updated if rules/phases changed  
 
@@ -317,8 +371,9 @@ cd ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/
 6. Forgetting **DataTableTool** / `.iff` sync after `.tab` edits.  
 7. Forgetting **`git submodule update`** on the server after merge.  
 8. Inventing git author identities — always `daquorm89 <douweheuvel@gmail.com>`.  
-9. Large C++ changes without a rollback plan.  
-10. Breaking NGE client assumptions (missing anims, bad datatable schema).
+9. Large C++ changes without a rollback plan or without running **`ant compile_src`** on the server tree.  
+10. Editing `.cpp`/`.h` but only rebuilding Java — engine binaries stay old until `ant compile_src` + process restart.  
+11. Breaking NGE client assumptions (missing anims, bad datatable schema).
 
 ---
 
