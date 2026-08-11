@@ -50,6 +50,7 @@ Restore **Pre-CU skill-based professions and combat presentation** on top of an 
 3. **Phased delivery.** Make systems *usable* first (grants fire, abilities execute, skills train), then deepen fidelity (states, tighter simulation). Exact Pre-CU combat curves are optional while NGE math can simulate the intended feel.
 4. **Data-driven where possible.** Datatables and command tables first; Java only for gates, hooks, or missing engine support.
 5. **No silent scope creep.** If a change touches professions + combat + loot, split into clear commits/PRs.
+6. **Full paths only in docs and instructions.** Never write truncated paths such as `serverdata/.../datatables/combat/combat_data.iff`. Always give the complete path from the server root (e.g. `~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff`).
 
 ### 2.2 Git
 
@@ -103,10 +104,17 @@ git submodule update --init --recursive
 ### High-traffic Pre-CU paths (under `dsrc`)
 
 ```
-dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_actions.java
-dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_base.java
-dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.tab
-# skills, commands, crafting, etc. under analogous datatables/ and script/ trees
+# Java (under dsrc submodule)
+~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_actions.java
+~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_base.java
+
+# Datatable source + compiled runtime IFF
+~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.tab
+~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
+
+# DataTableTool
+~/repos/swg-main/exe/linux/bin/DataTableTool
+~/repos/swg-main/build/bin/DataTableTool
 ```
 
 Exact skill-table and profession paths vary; always locate by name in `dsrc` before editing.
@@ -281,14 +289,50 @@ cd ~/repos/swg-main   # or ~/swg-main
 
 #### Datatables — one `.tab` (or the set you edited)
 
+**Do not use truncated paths.** Runtime compiled data lives under `data/`, not a vague `serverdata/...` placeholder.
+
+Source tab (edit this):
+
+`~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.tab`
+
+Compiled IFF the server loads (Ant/`build_tab` output):
+
+`~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff`
+
+DataTableTool binary (either path; `exe/linux/bin` is often a symlink to `build/bin`):
+
+- `~/repos/swg-main/exe/linux/bin/DataTableTool`
+- `~/repos/swg-main/build/bin/DataTableTool`
+
+**Compile a single combat table (full paths):**
+
 ```bash
-cd ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/
-DataTableTool -i combat_data.tab
-# Tool is often on PATH via build/bin; if not:
-# ~/repos/swg-main/build/bin/DataTableTool -i combat_data.tab
+cd ~/repos/swg-main
+
+mkdir -p ~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat
+
+# Preferred: match utils/build_tab.sh invocation
+~/repos/swg-main/exe/linux/bin/DataTableTool \
+  -i ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.tab \
+  -- -s SharedFile \
+  searchPath10=~/repos/swg-main/data/sku.0/sys.shared/compiled/game \
+  searchPath10=~/repos/swg-main/data/sku.0/sys.server/compiled/game
+
+# If the tool writes the .iff next to the .tab under dsrc/, copy into data/:
+cp -f ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff \
+      ~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
 ```
 
-Sync the resulting `.iff` to the path the GameServer reads (e.g. `serverdata/`) if your deploy requires it. Prefer this over `ant compile_tab` for a single table.
+Confirm the IFF timestamp updated:
+
+```bash
+ls -la ~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
+ls -la ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
+```
+
+Then restart GameServer. Prefer this over `ant compile_tab` when only one table changed.
+
+If your tree uses `~/swg-main` instead of `~/repos/swg-main`, substitute that root everywhere — still use **full** paths, never `...`.
 
 #### C++ — narrow `make` targets (`.cpp` / `.h` under `src`)
 
@@ -374,13 +418,14 @@ Only if `stationapi` sources changed — use that project’s narrow build (or `
 3. Core3 animation names without NGE mapping (`*_medium`, etc.).  
 4. PR compare UI defaulting to upstream **SWG-Source** — force `daquorm89` base.  
 5. Editing parent repo only while the real change is in **`dsrc`**.  
-6. Forgetting **DataTableTool** / `.iff` sync after `.tab` edits.  
-7. Forgetting **`git submodule update`** on the server after merge.  
-8. Inventing git author identities — always `daquorm89 <douweheuvel@gmail.com>`.  
-9. Large C++ changes without a rollback plan.  
-10. Editing `.cpp`/`.h` but only rebuilding Java — run `make … serverGame` and `SwgGameServer` in the CMake dir (`x/`), then restart GameServer.  
-11. Using full `ant compile` / `ant compile_src` for a one-file change — wasteful and unnecessary when narrow targets exist.  
-12. Breaking NGE client assumptions (missing anims, bad datatable schema).
+6. Forgetting **DataTableTool** after `.tab` edits, or leaving the new `.iff` only under `dsrc/` without updating `~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff`.  
+7. Giving truncated paths (`serverdata/.../file.iff`) in docs or agent instructions — always full paths from the server root.  
+8. Forgetting **`git submodule update`** on the server after merge.  
+9. Inventing git author identities — always `daquorm89 <douweheuvel@gmail.com>`.  
+10. Large C++ changes without a rollback plan.  
+11. Editing `.cpp`/`.h` but only rebuilding Java — run `make … serverGame` and `SwgGameServer` in the CMake dir (`x/`), then restart GameServer.  
+12. Using full `ant compile` / `ant compile_src` for a one-file change — wasteful and unnecessary when narrow targets exist.  
+13. Breaking NGE client assumptions (missing anims, bad datatable schema).
 
 ---
 
