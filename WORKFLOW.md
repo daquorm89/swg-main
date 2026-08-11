@@ -108,13 +108,12 @@ git submodule update --init --recursive
 ~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_actions.java
 ~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_base.java
 
-# Datatable source + compiled runtime IFF
-~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.tab
-~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
+# Datatable source (edit) + compiled IFF (beside .tab after DataTableTool)
+~/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.tab
+~/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
 
 # DataTableTool
-~/repos/swg-main/exe/linux/bin/DataTableTool
-~/repos/swg-main/build/bin/DataTableTool
+~/swg-main/build/bin/DataTableTool
 ```
 
 Exact skill-table and profession paths vary; always locate by name in `dsrc` before editing.
@@ -289,50 +288,31 @@ cd ~/repos/swg-main   # or ~/swg-main
 
 #### Datatables — one `.tab` (or the set you edited)
 
-**Do not use truncated paths.** Runtime compiled data lives under `data/`, not a vague `serverdata/...` placeholder.
+**Do not use truncated paths** (`serverdata/...`). Always write the full directory.
 
-Source tab (edit this):
-
-`~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.tab`
-
-Compiled IFF the server loads (Ant/`build_tab` output):
-
-`~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff`
-
-DataTableTool binary (either path; `exe/linux/bin` is often a symlink to `build/bin`):
-
-- `~/repos/swg-main/exe/linux/bin/DataTableTool`
-- `~/repos/swg-main/build/bin/DataTableTool`
-
-**Compile a single combat table (full paths):**
+**Preferred compile pattern (project standard):**
 
 ```bash
-cd ~/repos/swg-main
-
-mkdir -p ~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat
-
-# Preferred: match utils/build_tab.sh invocation
-~/repos/swg-main/exe/linux/bin/DataTableTool \
-  -i ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.tab \
-  -- -s SharedFile \
-  searchPath10=~/repos/swg-main/data/sku.0/sys.shared/compiled/game \
-  searchPath10=~/repos/swg-main/data/sku.0/sys.server/compiled/game
-
-# If the tool writes the .iff next to the .tab under dsrc/, copy into data/:
-cp -f ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff \
-      ~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
+# Template
+cd ~/swg-main/dsrc/sku.0/sys.<server|shared>/compiled/game/datatables/<category>/
+~/swg-main/build/bin/DataTableTool -i <file>.tab
 ```
 
-Confirm the IFF timestamp updated:
+**Concrete example — combat_data:**
 
 ```bash
-ls -la ~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
-ls -la ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
+cd ~/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/
+~/swg-main/build/bin/DataTableTool -i combat_data.tab
 ```
 
-Then restart GameServer. Prefer this over `ant compile_tab` when only one table changed.
+- Tool path: `~/swg-main/build/bin/DataTableTool` (full path; do not rely on `PATH`).
+- Run from the directory that contains the `.tab`; the tool writes the `.iff` next to it:
+  `~/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff`
+- Server root on some machines is `~/repos/swg-main` instead of `~/swg-main` — use the real root, still with full paths.
+- Confirm: `ls -la ~/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff`
+- Then restart GameServer.
 
-If your tree uses `~/swg-main` instead of `~/repos/swg-main`, substitute that root everywhere — still use **full** paths, never `...`.
+Prefer this over `ant compile_tab` when only one table changed.
 
 #### C++ — narrow `make` targets (`.cpp` / `.h` under `src`)
 
@@ -418,7 +398,7 @@ Only if `stationapi` sources changed — use that project’s narrow build (or `
 3. Core3 animation names without NGE mapping (`*_medium`, etc.).  
 4. PR compare UI defaulting to upstream **SWG-Source** — force `daquorm89` base.  
 5. Editing parent repo only while the real change is in **`dsrc`**.  
-6. Forgetting **DataTableTool** after `.tab` edits, or leaving the new `.iff` only under `dsrc/` without updating `~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff`.  
+6. Forgetting **DataTableTool** after `.tab` edits (from the category dir: `~/swg-main/build/bin/DataTableTool -i <file>.tab`).  
 7. Giving truncated paths (`serverdata/.../file.iff`) in docs or agent instructions — always full paths from the server root.  
 8. Forgetting **`git submodule update`** on the server after merge.  
 9. Inventing git author identities — always `daquorm89 <douweheuvel@gmail.com>`.  
