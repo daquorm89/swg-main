@@ -35,7 +35,7 @@ Restore **Pre-CU skill-based professions and combat presentation** on top of an 
 | **Creatures / spawns / lairs** | **Leave NGE** until further notice |
 | **Loot tables** | **Leave NGE** until further notice |
 | **World / planet content** | **Leave NGE** until further notice |
-| **Crafting / resources / schematics** | **Leave NGE**; no issues found yet — revisit only if Pre-CU professions require it |
+| **Crafting / resources / schematics** | **Partial:** Pre-CU `schematic_group` rows restored for profession grants; full crafting economy still NGE |
 
 **Combat is one subsystem among several in-scope systems** (skills, commands, abilities). Do not treat the combat hybrid as the whole project. Do not expand into loot/world/crafting “while you’re there” without an explicit decision to put them in scope.
 
@@ -262,6 +262,16 @@ Prefer checking these into `tools/` or `docs/scripts/` on a feature branch if th
 
 ## 6. Standard change workflow (any subsystem)
 
+
+### 5.7 Core3 as reference only (do not mix trees)
+
+**[REFERENCE ONLY]** [swgemu/Core3](https://github.com/swgemu/Core3) is a Pre-CU-oriented emulator. Use it to **look up** Pre-CU ability behavior (Lua command scripts under `MMOCoreORB/bin/scripts/commands/`, combat state effects).  
+
+**Never** copy Core3 files into `~/repos/swg-main`, merge Core3 trees, or treat Core3 paths as deploy targets. All implementation stays on the NGE SWG-Source tree (`daquorm89/swg-main` + `dsrc` / `src` submodules).
+
+Example (posture specials): Core3 `diveShot.lua` uses `ATTACKER_FORCE_PRONE`; `kipUpShot` → `ATTACKER_FORCE_STANDING`; `rollShot` → `ATTACKER_FORCE_CROUCH`. On NGE hybrid, the equivalent is a post-success `setPosture(...)` in the Java entry point (or a future data field), not importing Core3 C++.
+
+
 ### 6.1 Before coding
 
 1. Read this document.
@@ -369,6 +379,33 @@ find ~/repos/swg-main -name '<file>.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;
 
 Prefer this over `ant compile_tab` when only one table changed.
 
+#### Client TRE — required for shared tables the UI reads
+
+Several shared datatables are resolved on the **client** (skill boxes, command toolbar, combat costs/red-X). Updating the server alone is not enough.
+
+**Tables that must also be packed into the client TRE** after DataTableTool (use the **shared** SUCCESS `.iff` under `data/sku.0/sys.shared/...`):
+
+| Table | Why the client needs it |
+|-------|-------------------------|
+| `schematic_group.iff` | Skill box schematic lists; missing → **Unknown schematic** |
+| `skills.iff` | Skill tree / grant display when client caches skill data |
+| `command_table.iff` | Toolbar / validWeapon red-X / command metadata |
+| `combat_data.iff` | Action costs for client red-X (e.g. out-of-action) before server reject |
+
+**Procedure:**
+
+1. Compile and distribute on the server as above (`SRC` = SUCCESS path under `data/…/sys.shared/…`).
+2. Copy that **same** shared `.iff` into the client TRE at the **exact original internal path** (e.g. `datatables/crafting/schematic_group.iff`, `datatables/command/command_table.iff`, `datatables/combat/combat_data.iff`).
+3. Prefer a **small override TRE** with only the changed files (easy to remove if a pack breaks load).
+4. **Fully restart the client** (not just relog).
+5. Confirm stock client still boots if a pack fails; do not leave a broken base TRE without backup.
+
+**Do not** point the client at server-only copies under `sys.server/` when a shared table exists — use shared.
+
+If the skill UI still shows Unknown after a correct pack, the draft schematic **object template** may be missing from client assets (separate from the group table).
+
+
+
 #### C++ — narrow `make` targets (`.cpp` / `.h` under `src`)
 
 C++ is built from the **CMake build directory**. On this project that directory is commonly named **`x`** (some stock Ant setups use `build/` instead — use whichever exists on the machine).
@@ -461,6 +498,8 @@ Only if `stationapi` sources changed — use that project’s narrow build (or `
 11. Editing `.cpp`/`.h` but only rebuilding Java — run `make … serverGame` and `SwgGameServer` in the CMake dir (`x/`), then restart GameServer.  
 12. Using full `ant compile` / `ant compile_src` for a one-file change — wasteful and unnecessary when narrow targets exist.  
 13. Breaking NGE client assumptions (missing anims, bad datatable schema).
+14. Updating shared `.iff` on the **server only** — skill boxes, command red-X, and combat cost UI need the same shared `.iff` in the **client TRE** (see §6.2 Client TRE).
+15. Mixing **Core3** source into the NGE tree — Core3 is reference-only (§5.7).
 
 ---
 
