@@ -185,6 +185,38 @@ Canonical process rules: [`WORKFLOW.md`](./WORKFLOW.md).
 
 ---
 
+
+### P7 — Pre-CU Jedi reconnect (retire NGE/CU Jedi)
+
+**Goal:** Players progress on Pre-CU `jedi_*` skill trees (Padawan → Journeyman → Master) with hybrid combat abilities; NGE Force Sensitive class / expertise and CU Force Discipline are not offered as the live Jedi path.
+
+**Primary paths:** `dsrc` → `skills.tab`; combat already hybrid via `combat_data.tab` + `combat_actions.java` for `jedi_combat_data` names.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P7.1 | Unhide Pre-CU `jedi_*` skill boxes (clear GOD_ONLY / IS_HIDDEN) | [x] (branch `feature/precu-jedi-reconnect-retire-nge`) |
+| P7.2 | Hide/retire `force_discipline_*` (CU) | [x] |
+| P7.3 | Hide/retire `class_forcesensitive_*` (NGE FS class) | [x] |
+| P7.4 | Hide/retire `expertise_fs_*` (NGE FS expertise) | [x] |
+| P7.5 | Fix `forceIntimidate` grant → `forceIntimidate1` | [x] |
+| P7.6 | Leave Pre-CU `force_sensitive_*` trees available (FS before Padawan) | [x] (unchanged) |
+| P7.7 | Rebuild `skills.iff`, smoke-test train Padawan + use saberSlash1 / force power | [ ] |
+| P7.8 | Padawan trials / holocron unlock path audit (eligibility → grant novice) | [ ] |
+| P7.9 | Force power pool spend on hybrid specials (table costs vs `jedi.drainForcePower`) | [ ] |
+| P7.10 | Optional: deepen hybrid rows from dormant `jedi_combat_data.tab` / `jedi_actions.tab` | [ ] |
+| P7.11 | Existing characters on NGE FS / discipline — migration or strip guidance | [ ] |
+
+**Notes**
+
+- Combat: ~59 `jedi_combat_data` ability names were already hybrid-wired (command_table + combat_data + Java). Gap was skill visibility, not ability rows.
+- `jedi_padawan_novice` still costs **250** skill points (classic whole-pool unlock) — confirm desired balance after smoke test.
+- Cert grants (`cert_onehandlightsaber`, etc.) do not need combat_data rows.
+- Do not import Core3 Jedi manager; reconnect tables/scripts only.
+
+**Exit criteria:** P7.7 verified in-game; P7.8–P7.11 done or explicitly deferred.
+
+---
+
 ## Completed projects
 
 _None yet. When a project finishes, move it here like this:_
