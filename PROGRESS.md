@@ -219,7 +219,17 @@ Canonical process rules: [`WORKFLOW.md`](./WORKFLOW.md).
 
 ## Completed projects
 
-_None yet. When a project finishes, move it here like this:_
+### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
+
+**Repo:** [daquorm89/client-tools](https://github.com/daquorm89/client-tools) (see its own `WORKFLOW.md`)
+
+A local sync of client-tools onto GitHub surfaced a pre-existing bug: `TransceiverBase::getGlobalReceiverInfo()` in `Transceiver.cpp` had been changed to ignore its `typeId` and return one shared static `GlobalReceiverInfo` for every `Transceiver<MessageType, IdentifierType>` instantiation in the engine, instead of a per-type entry (keyed by `typeid.name()` in a `std::map`, as designed). This caused message-type cross-talk — e.g. a `bool` push-to-talk message invoking an auction-bid callback with the wrong payload — producing a 0xC0000005 access violation very early in client startup (`CuiIoWin::resetInputMaps` / `CuiMessageBox` construction), with a callstack that looked corrupted because of the type confusion.
+
+- Fixed: restored the original per-type `std::map<const char * const, GlobalReceiverInfo>` lookup in `Transceiver.cpp` (PR `fix/restore-per-type-receiver-registry`, commit `9a4ca6fd1`).
+- Also restored `Transceiver()`'s constructor call to `getGlobalReceiverInfo(typeid(this))` to match true upstream (PR `fix/restore-upstream-transceiver-ctor`, commit `75280c00a`) — an earlier local commit had disabled this call with a `"TEMPORARY: disabled to bypass early-startup RTTI crash"` comment that was itself part of the same broken commit, not a genuine upstream safeguard.
+- **Documented fallback** (in commit `75280c00a` message and `6ff027afb`/`24addb980` history): if a similar early-startup RTTI/access-violation crash reappears and the `Transceiver.cpp` registry isn't the obvious cause, commenting out `getGlobalReceiverInfo(typeid(this));` in the `Transceiver()` constructor is a known, working short-term mitigation that got the client launching before the real cause was found. Not a substitute for finding the real cause if it happens again.
+- Other changes bundled in the same local sync (`PlayerCreatureController.cpp`, `CreatureObject.cpp/h`, `SkillObject.cpp/h`, `LocalizedStringTable.cpp/h`, new `SwgCuiSkills.cpp/h` ~2000 lines, etc.) are intentional in-progress work and were left as-is — not reviewed as part of this fix.
+- **`SwgGodClient` project changes are deprioritized** — see Deferred below.
 
 ```markdown
 ### Px — Title (completed YYYY-MM-DD)
@@ -239,6 +249,7 @@ Summary of what shipped. Link key PRs/commits if useful.
 - **Full** Core3 9-stat attribute model + client HAM chrome — tracked as P6.8, not active work until P6.1–P6.7 settle
 - C++ engine rewrites (last resort after table/script reconnect)
 - Importing or linking Core3 binaries/sources into this tree
+- **`SwgGodClient`** (client-tools dev/admin tool) — its project file changes are not being pursued for now; risk of destabilizing the main `SwgClient` build outweighs current value. Leave as-is unless explicitly revisited.
 
 ---
 
@@ -264,3 +275,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 |------|--------|
 | 2026-08-11 | Initial PROGRESS.md: P1 combat hybrid, P2 skill spine, P3 process docs |
 | 2026-08-13 | P1 posture sub-targets P1.9–P1.12; add P4 command queue, P5 targeting, P6 HAM reconnect; evidence snapshot; deferrals clarified |
+| 2026-08-15 | Added P8 (completed): client-tools Transceiver message-dispatch startup crash fix; linked client-tools repo + its own WORKFLOW.md from this file; deferred SwgGodClient |
