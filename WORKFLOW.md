@@ -4,7 +4,8 @@
 
 **Owner:** daquorm89 (`douweheuvel@gmail.com`)  
 **Runnable server tree (local):** `~/repos/swg-main/`  
-**GitHub (source of truth):** [daquorm89/swg-main](https://github.com/daquorm89/swg-main) (fork of SWG-Source) with submodules `dsrc`, `src`, `serverdata`, `stationapi`, `exe`/`configs`
+**GitHub (source of truth):** [daquorm89/swg-main](https://github.com/daquorm89/swg-main) (fork of SWG-Source) with submodules `dsrc`, `src`, `serverdata`, `stationapi`, `exe`/`configs`  
+**Client repo (separate, not a submodule):** [daquorm89/client-tools](https://github.com/daquorm89/client-tools) — SWG client + dev tools source (Visual Studio 2013). Has its own `WORKFLOW.md`. Any change to a `shared`-prefixed file (enums, message types, etc. that cross the client/server boundary) must be mirrored here, per client-tools' README "Shared Files" note.
 
 This file is the standing operating procedure for **humans and AI agents**. Read it before changing code, data, or skills. Prefer updating this document when process changes, rather than relying on chat history.
 
@@ -100,6 +101,7 @@ git submodule update --init --recursive
 | `src` | C++ engine sources (combat engine, objects) — change rarely; high risk |
 | `serverdata` | Runtime data mirrors (e.g. compiled `.iff` trees as used by your deploy) |
 | `stationapi` / `exe` (configs) | Station / process config |
+| [`client-tools`](https://github.com/daquorm89/client-tools) (separate repo, **not** a submodule of `swg-main`) | SWG client source + dev tools, Visual Studio 2013. Own `WORKFLOW.md`. Contains `SwgClient` (the runnable client) and `SwgGodClient` (dev/admin tool — currently a build risk, see its `WORKFLOW.md`, not actively maintained). |
 
 ### High-traffic Pre-CU paths (under `dsrc`)
 
