@@ -181,6 +181,36 @@ Canonical process rules: [`WORKFLOW.md`](./WORKFLOW.md).
 | P6.7 | Shock wounds / wound healing interaction audit (engine + healing scripts) | [ ] |
 | P6.8 | Full Core3 9-stat + client HAM UI — **explicitly later / separate phase** | [ ] |
 
+| P6.9 | **Soft SQF (no 9-stat engine)** — approximate Pre-CU Strength/Quickness/Focus via skill mods on ability HAM costs | [~] |
+
+**P6 soft-SQF implementation note (REVERTIBLE)**
+
+Goal: closest Pre-CU HAM *feel* without expanding engine attributes 6→9.
+
+What this is:
+- Skill-mod cost formula only (not real Strength/Quickness/Focus attributes)
+- Formula (Core3/SWGANH-style): `finalCost = baseCost * (1 - mod/1400)`, clamped to [0, base]
+- Mapping: `strength` → Health costs; `quickness` (fallback `agility`) → Action costs; `focus` → Mind costs
+- `combat_data.healthCost` / `mindCost` are now loaded and spent (were table columns only; NGE path zeroed them)
+- `canDrain` / `drain` gate and spend Health + Action + Mind (Health via `setAttrib`; Action/Mind via native `drainAttributes`)
+
+What this is NOT:
+- Full Pre-CU 9-pool HAM (P6.8 stays deferred)
+- Automatic grants of strength/quickness/focus on every profession (mods must exist to matter; NGE level `strength`/`agility` may apply for templated chars; pure Pre-CU skill-box chars need grants next)
+
+Files (dsrc branch `feature/precu-soft-sqf-ham`):
+- `script/combat_engine.java` — load/store `healthCost`/`mindCost` on `combat_data`
+- `script/library/combat.java` — `PRECU_SOFT_SQF_DIVISOR`, `getSoftSqfMod`, `applySoftSqfCost`, full-pool drain/gate, both `getActionCost` overloads
+
+**How to REVERT if it fails:**
+1. Revert / drop commits on `feature/precu-soft-sqf-ham` (or restore the two files from master)
+2. Rebuild: `./utils/build_java_single.sh` for `combat.java` and `combat_engine.java`
+3. Restart GameServer
+4. Expected pre-change behavior: Action-only costs; `cost[0]`/`cost[2]` always 0; no SQF formula
+
+Later soft-SQF steps (not in this first commit): profession/racial grants for `quickness`/`focus`, armor encumbrance penalty to soft mods, food/buff targets.
+
+
 **Exit criteria:** Pilot set spends and gates on H/A/M from tables; P6.5 policy recorded; P6.8 remains deferred unless scope explicitly expands.
 
 ---
@@ -276,3 +306,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-08-11 | Initial PROGRESS.md: P1 combat hybrid, P2 skill spine, P3 process docs |
 | 2026-08-13 | P1 posture sub-targets P1.9–P1.12; add P4 command queue, P5 targeting, P6 HAM reconnect; evidence snapshot; deferrals clarified |
 | 2026-08-15 | Added P8 (completed): client-tools Transceiver message-dispatch startup crash fix; linked client-tools repo + its own WORKFLOW.md from this file; deferred SwgGodClient |
+| 2026-08-16 | P6.9 soft-SQF: skill-mod Strength/Quickness/Focus cost approximation (no 9-stat engine). Branch `feature/precu-soft-sqf-ham`. Explicit REVERT steps in P6 notes. |
