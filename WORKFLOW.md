@@ -488,4 +488,33 @@ Order is guidance, not a rigid schedule. Items marked *deferred* stay NGE until 
 
 ---
 
+---
+
+## 11. Client-side: Pre-CU skills profession list (Jedi / FS)
+
+Full SOP lives in **[client-tools `WORKFLOW.md` §6](https://github.com/daquorm89/client-tools/blob/feature/precu-skills-show-jedi-fs/WORKFLOW.md)**.
+
+**Cause:** `SwgCuiSkills.cpp` allow-list used category roots `jedi` / `force_sensitive` (not `IS_PROFESSION`). Ownership is `jedi_padawan` / `force_sensitive_*` → trees never showed.
+
+**Branch:** `feature/precu-skills-show-jedi-fs` on [client-tools](https://github.com/daquorm89/client-tools)
+
+### Implement on the Windows client machine
+
+```bat
+cd /d "E:\swg-source VM\SWGSource Client v3.0\client-tools"
+git fetch origin
+git checkout feature/precu-skills-show-jedi-fs
+git pull origin feature/precu-skills-show-jedi-fs
+```
+
+1. Open `src\build\win32\swg.sln` in **Visual Studio 2013**
+2. Config: **Release | Win32**
+3. Build project **`SwgClient`**
+4. Deploy new `SwgClient_r.exe` over the playable client (backup old exe first)
+5. Restart client, log in, Ctrl+S → Jedi Padawan / FS trees should list
+
+This is a **client binary** change — not a TRE/`skills.iff` deploy.
+
+---
+
 *End of WORKFLOW.md*
