@@ -208,7 +208,13 @@ Files (dsrc branch `feature/precu-soft-sqf-ham`):
 3. Restart GameServer
 4. Expected pre-change behavior: Action-only costs; `cost[0]`/`cost[2]` always 0; no SQF formula
 
-Later soft-SQF steps (not in this first commit): profession/racial grants for `quickness`/`focus`, armor encumbrance penalty to soft mods, food/buff targets.
+Later soft-SQF steps: armor encumbrance penalty to soft mods; food/buff targets; combat_data base cost retune.
+
+**Grants (second commit on `feature/precu-soft-sqf-ham`):**
+- Racial strength/quickness/focus from `racial_mods.tab` applied in `recalcPlayerPools` (Pre-CU path) via skill mods; objvars `precu.soft_sqf.racial_*` prevent stacking
+- Profession novice SKILL_MODS: brawler strength=50; marksman quickness=50; medic focus=50; scout 25/25; artisan/entertainer focus=25; padawan strength=25,focus=50
+
+See also repo root `todo.md` for PR links and per-commit deploy commands.
 
 
 **Exit criteria:** Pilot set spends and gates on H/A/M from tables; P6.5 policy recorded; P6.8 remains deferred unless scope explicitly expands.
@@ -307,3 +313,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-08-13 | P1 posture sub-targets P1.9–P1.12; add P4 command queue, P5 targeting, P6 HAM reconnect; evidence snapshot; deferrals clarified |
 | 2026-08-15 | Added P8 (completed): client-tools Transceiver message-dispatch startup crash fix; linked client-tools repo + its own WORKFLOW.md from this file; deferred SwgGodClient |
 | 2026-08-16 | P6.9 soft-SQF: skill-mod Strength/Quickness/Focus cost approximation (no 9-stat engine). Branch `feature/precu-soft-sqf-ham`. Explicit REVERT steps in P6 notes. |
+| 2026-08-17 | Soft SQF grants: racial mods + profession novice strength/quickness/focus; added todo.md with PR links and deploy commands. |
