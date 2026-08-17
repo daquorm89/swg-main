@@ -82,7 +82,52 @@ find ~/repos/swg-main -name 'skills.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;
 
 **Smoke:** Human/Wookiee/Bothan etc. should show different special costs; brawler novice should reduce Health-cost specials slightly vs naked non-brawler.
 
+
+#### 3) Cost retune + armor tax + food/buff modified
+
+**Commit:** `Pre-CU soft SQF: cost retune, armor tax, food/buff modified mods`
+
+**Files:** `combat_data.tab`, `combat.java`, `buff.tab`
+
+**What it does:**
+- 97 Pre-CU action-only specials get Health/Mind costs (0.8× / 0.6× Action)
+- Armor fire-rate penalty reduces effective SQF (heavy armor = higher costs)
+- Food `*_modified` mods count toward SQF; selected foods gain `quickness_modified` / `focus_modified`
+
+**Pull + deploy:**
+
+```bash
+cd ~/repos/swg-main/dsrc
+git fetch origin
+git checkout feature/precu-soft-sqf-ham
+git pull origin feature/precu-soft-sqf-ham
+
+cd ~/repos/swg-main
+./utils/build_java_single.sh dsrc/sku.0/sys.server/compiled/game/script/library/combat.java
+# also rebuild combat_engine + skill if not already on this branch deploy
+
+cd ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/combat
+~/repos/swg-main/build/bin/DataTableTool -i combat_data.tab
+SRC=~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff
+find ~/repos/swg-main -name 'combat_data.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;
+
+cd ~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/buff
+~/repos/swg-main/build/bin/DataTableTool -i buff.tab
+SRC=~/repos/swg-main/data/sku.0/sys.shared/compiled/game/datatables/buff/buff.iff
+find ~/repos/swg-main -name 'buff.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;
+# pack combat_data.iff + buff.iff into client TRE if shared
+# full GameServer restart (+ client)
+```
+
+**Smoke / balance pass:**
+- [ ] Naked Pre-CU special: Action ~40–125 plus Health/Mind on retuned rows
+- [ ] Brawler/marksman novice + racial: measurable cost drop vs naked
+- [ ] Wear heavy armor (fire-rate penalty active): costs rise vs same skills naked
+- [ ] Eat caf / air cake / havla: further cost drop via modified mods
+- [ ] NGE expertise specials with 2000+ Action unchanged (not retuned)
+
 ### REVERT soft SQF entirely
+
 
 ```bash
 cd ~/repos/swg-main/dsrc
@@ -110,12 +155,12 @@ Details also in `PROGRESS.md` under **P6 soft-SQF**.
 
 ## Soft SQF — next steps (not coded yet)
 
-| Step | Goal |
-|------|------|
-| Armor encumbrance → soft SQF penalty | Heavy armor raises special costs again |
-| Food / doctor / buff targets | Buff strength/quickness/focus mods |
-| Retune base healthCost/actionCost/mindCost | Pre-CU-ish baselines on hybrid combat_data rows |
-| In-game balance pass | Naked vs invested vs armored special economy |
+| Step | Status |
+|------|--------|
+| Retune base H/A/M on Pre-CU rows | Done (commit 3) |
+| Armor → soft SQF penalty | Done (fireRatePenalty tax) |
+| Food / buff modified targets | Done (selected foods + `*_modified` wiring) |
+| In-game balance smoke | **Your turn** — checklist under commit 3 |
 
 ---
 
@@ -215,12 +260,12 @@ Shared table client TRE: after any shared `.iff` change, pack the same file the 
 
 ## Recommended deploy order right now
 
-1. [ ] Merge or checkout `feature/precu-soft-sqf-ham` (both commits)
+1. [ ] Checkout `feature/precu-soft-sqf-ham` (all 3 commits)
 2. [ ] Rebuild `combat.java`, `combat_engine.java`, `skill.java`
-3. [ ] Rebuild `skills.iff` + copy; client TRE if needed
+3. [ ] Rebuild `skills.iff`, `combat_data.iff`, `buff.iff` + copy; client TRE
 4. [ ] Restart GameServer; relog / re-grant novices
-5. [ ] Smoke: special costs with/without profession; species differences
-6. [ ] Only then: armor soft-SQF penalty / cost retune
+5. [ ] Balance smoke checklist (commit 3 section)
+6. [ ] Merge to master only after smoke looks good
 
 ---
 
