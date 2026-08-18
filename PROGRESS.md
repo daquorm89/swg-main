@@ -267,6 +267,55 @@ A local sync of client-tools onto GitHub surfaced a pre-existing bug: `Transceiv
 - Other changes bundled in the same local sync (`PlayerCreatureController.cpp`, `CreatureObject.cpp/h`, `SkillObject.cpp/h`, `LocalizedStringTable.cpp/h`, new `SwgCuiSkills.cpp/h` ~2000 lines, etc.) are intentional in-progress work and were left as-is — not reviewed as part of this fix.
 - **`SwgGodClient` project changes are deprioritized** — see Deferred below.
 
+### P9 — Atmospheric starship flight (in progress, started 2026-08-18)
+
+**Repos:** `swg-main` (`dsrc`, `src` submodules) + `client-tools`. Branch
+`feature/atmospheric-flight` in all three. Full design in
+`atmospheric-flight-plan.md` (root of `swg-main`, this commit).
+
+**Goal:** call a ship down to a ground planet from the datapad, board/pilot it, fly
+around in atmosphere, land, exit — same ship still flies in space as normal. Bonus:
+fly high enough on a planet and transfer into that planet's space scene. Kashyyyk and
+other instance/POI-only scenes excluded.
+
+**Key finding:** ground vs. space command availability is gated by a single scene-
+name-prefix check, duplicated identically on server (`ServerCommandTable.cpp`) and
+client (`Game.cpp`/`ClientCommandTable.cpp`) — `pilotShip`/`unpilotShip`/
+`leaveStation` only exist in `command_table_space.tab`, so they're simply
+unregistered on any ground planet process. Everything under that gate
+(`CreatureObject::pilotShip/unpilotShip`, POB interiors, client-authoritative ship
+movement, `space_transition.unpackShipForPlayer`) is already scene-agnostic.
+
+**Second key finding:** ship-vs-terrain collision is already fully implemented in
+`CollisionCallbackManager`/`ShipController::respondToCollision()` — it's wired
+through the same generic per-frame collision loop used for ship-vs-ship collision —
+but disabled via one commented-out registration line in `CollisionCallbacks.cpp`.
+No "landing" concept exists on top of it (it only bounces), which is almost
+certainly why it was left off — likely an abandoned SOE prototype of this exact
+feature.
+
+Progress:
+- ✅ `ConfigServerGame::allowAtmosphericFlight` kill switch (`src`, commit
+  `165a7889`).
+- ✅ Ground command table additions: `pilotShip`, `unpilotShip`, `leaveStation`,
+  `openWings`, `closeWings`, `boosterOn`, `boosterOff`, `escapePod`,
+  `kickFromShip` (`dsrc`, commit `9920649f0`).
+- ✅ New `atmospheric_flight_planets.tab`: per-planet allow-list + space-transition
+  altitude (`dsrc`, same commit). Kashyyyk (all variants), Mustafar, adventure/
+  dungeon instances, tutorial excluded; open-world planets allowed, 3000m default
+  space-transition altitude.
+- ⬜ Terrain collision registration + multi-point landing check + speed-gated damage
+  (`src`, `ShipController`/`CollisionCallbacks`) — next up.
+- ⬜ `ship_control_device.java` / `combat_ship_player.java` scene-gating updates for
+  boarding/exit on the ground (`dsrc`).
+- ⬜ Client HUD/reticle audit for non-space flight (`client-tools`).
+- ⬜ Altitude → space-scene transition trigger (`dsrc`).
+
+**Revert plan:** everything is additive (new datatable rows/files, new config flag
+default-on); reverting = don't merge / revert the branch merge. No existing space
+flight, ground movement, or vehicle code is modified. `allowAtmosphericFlight=false`
+in server config kills the feature live without a rebuild once merged.
+
 ```markdown
 ### Px — Title (completed YYYY-MM-DD)
 
