@@ -348,6 +348,17 @@ Progress:
     the flag stayed false forever. Added `ShipController::setLanded()` + JNI
     `setShipLanded()`, and call it from `unpackShipForPlayer` when not in a
     space scene so exit works immediately after call-down.
+- ✅ **In-game follow-up (call works, L exit fails, no terrain):**
+  - Root cause: player ships are **client-authoritative** — server
+    `CollisionWorld` terrain callbacks never run, so `isShipLanded` stays
+    false and exit stayed blocked; pure collision registration is not enough.
+  - Exit: gate on `getShipCurrentSpeed() < 2` (script-only, no C++ needed).
+  - Exit UX: self-radial **Exit Ship** while piloting on allowed ground
+    (L may not be bound on ground client command set).
+  - Terrain: floor check in `PlayerShipController::checkValidMove` rejects
+    moves below terrain height (requires **C++ rebuild**). Soft stop, not
+    full bounce physics.
+  - Call Ship label → `space/space_terminal:launch_ship`.
 - ⬜ Client HUD/reticle audit for non-space flight (`client-tools`).
 - ⬜ Altitude → space-scene transition trigger (`dsrc`).
 - ⬜ Client ground command table mirror (`client-tools`) if not already done.
