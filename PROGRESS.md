@@ -311,8 +311,16 @@ Progress:
   state. Terrain collision callback registered only when
   `allowAtmosphericFlight` is true. **Not compiled/tested — written without a
   build environment for this engine; review before deploying.**
-- ⬜ `ship_control_device.java` / `combat_ship_player.java` scene-gating updates for
-  boarding/exit on the ground (`dsrc`).
+- ✅ `ship_control_device.java` planet allow-list check + **"Call Ship" radial**
+  (`dsrc`, commit `1c30521e2`): new SERVER_MENU5 option ("Summon Vehicle" string
+  reused) shown when a ship exists but hasn't been placed in the world, on an
+  allowed ground planet. Reuses the existing `unpackShipForPlayer()` (previously
+  only reachable from the space station retrieval flow).
+- ✅ `combat_ship_player.java` — pilot-seat exit (`unpilotShip`/the "L" keybind) now
+  requires `isShipLanded()` on a ground scene before it's allowed; previously it
+  let you bail out mid-flight. God-mode bypass preserved. Same commit.
+- ✅ `isShipLanded()` exposed to scripts (`src` commit `9b431868`, `dsrc` commit
+  `1c30521e2` for the Java-side wrapper).
 - ⬜ Client HUD/reticle audit for non-space flight (`client-tools`).
 - ⬜ Altitude → space-scene transition trigger (`dsrc`).
 
