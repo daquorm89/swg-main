@@ -304,8 +304,13 @@ Progress:
   altitude (`dsrc`, same commit). Kashyyyk (all variants), Mustafar, adventure/
   dungeon instances, tutorial excluded; open-world planets allowed, 3000m default
   space-transition altitude.
-- ⬜ Terrain collision registration + multi-point landing check + speed-gated damage
-  (`src`, `ShipController`/`CollisionCallbacks`) — next up.
+- ✅ Terrain collision registration + multi-point landing check + speed-gated damage
+  (`src`, commit `e1dd09f7`): `ShipController::checkLanding()` (5-point terrain
+  sample under the hull), `respondToTerrainCollision()` (lands cleanly or bounces
+  with damage only above a speed threshold), `isLanded()`, takeoff clears landed
+  state. Terrain collision callback registered only when
+  `allowAtmosphericFlight` is true. **Not compiled/tested — written without a
+  build environment for this engine; review before deploying.**
 - ⬜ `ship_control_device.java` / `combat_ship_player.java` scene-gating updates for
   boarding/exit on the ground (`dsrc`).
 - ⬜ Client HUD/reticle audit for non-space flight (`client-tools`).
