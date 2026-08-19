@@ -176,9 +176,11 @@ See **§5** for detail. Summary:
 
 - Only when Java/data cannot express the rule (rare).
 - Files: `.cpp` / `.h` under the **`src` submodule** (engine + game).
-- On the server machine, rebuild with **narrow Make targets** from the CMake dir (usually `x/`):  
-  `make -j$(nproc) serverGame && make -j$(nproc) SwgGameServer` (see §6.3).  
-  Do **not** default to `ant compile_src` / full rebuilds.
+- On the server machine, rebuild with **narrow Make targets** from the CMake dir
+  (**`build/`**, not `x/` — see `build.xml`):  
+  `cd ~/repos/swg-main/build && make -j$(nproc) serverGame && make -j$(nproc) SwgGameServer`
+  (see §6.3). If `build/` has no Makefile yet, run `ant prepare_src_x86` (or
+  `ant prepare_src`) once first. Do **not** default to `ant compile_src` / full rebuilds.
 - Restart only the processes whose binaries you relinked.
 - Treat C++ as last resort; PRs should list which targets were rebuilt.
 
@@ -275,7 +277,7 @@ Prefer checking these into `tools/` or `docs/scripts/` on a feature branch if th
 
 - **Data:** edit `.tab` (or generate via script); keep schema column counts intact.
 - **Scripts:** thin methods; match scriptHook names exactly.
-- **Engine (`src`):** only with explicit justification; rebuild with narrow `make` targets in `x/` (§6.3).
+- **Engine (`src`):** only with explicit justification; rebuild with narrow `make` targets in `build/` (§6.3).
 
 ### 6.3 Build on the server machine
 
@@ -373,37 +375,46 @@ Prefer this over `ant compile_tab` when only one table changed.
 
 #### C++ — narrow `make` targets (`.cpp` / `.h` under `src`)
 
-C++ is built from the **CMake build directory**. On this project that directory is commonly named **`x`** (some stock Ant setups use `build/` instead — use whichever exists on the machine).
+C++ is built from the **CMake build directory**. On this project that directory is
+**`~/repos/swg-main/build`** (`build.xml`: `property name="build" location="${basedir}/build"`).
+Do **not** use `x/` — that path is not created by this tree’s Ant/CMake setup.
 
 **Standard narrow rebuild after game/combat engine edits:**
 
 ```bash
-cd ~/repos/swg-main/x    # CMake build dir
+# If build/ does not exist or has no Makefile, configure CMake once first:
+#   cd ~/repos/swg-main && ant prepare_src_x86   # Intel/x86
+#   # or: ant prepare_src                       # non-Intel only
+
+cd ~/repos/swg-main/build
 make -j$(nproc) serverGame
 make -j$(nproc) SwgGameServer
 ```
 
 | Target | Role |
 |--------|------|
-| `serverGame` | Game library / objects affected by most `src/game` and shared engine edits |
+| `serverGame` | Game library / objects affected by most serverGame / shared engine edits under `src` |
 | `SwgGameServer` | GameServer binary that must be relinked after `serverGame` |
 
+- Run `make` **from `build/`**, never from the repo root (root has no Makefile for these targets).
 - Rebuild **only these** when a few `.cpp`/`.h` files change and those targets are sufficient.
 - If you changed a different binary (LoginServer, ConnectionServer, etc.), `make -j$(nproc) <ThatTarget>` instead of rebuilding everything.
 - There is no single-TU helper equivalent to `build_java_single.sh`; Make still compiles dirty objects, but **do not** default to rebuilding every server target.
-- Restart **GameServer** (and only other processes whose binaries you relinked) so the new binary is loaded.
+- Restart **GameServer** (and only other processes whose binaries you relinked) so the new binary and JNI natives load.
 
-**When the CMake tree is missing or stale** (first setup, clean, or generator change), configure once, then use narrow makes again:
+**When `build/` is missing or CMake is stale** (first setup, clean, or generator change):
 
 ```bash
 cd ~/repos/swg-main
-ant prepare_src_x86   # or prepare_src on non-x86; creates/updates the CMake build dir
-cd x                  # or build/ if that is your cmake output dir
+ant prepare_src_x86   # Intel/x86 — runs cmake in build/
+# or: ant prepare_src  # non-Intel only
+cd build
 make -j$(nproc) serverGame
 make -j$(nproc) SwgGameServer
 ```
 
 **Avoid for routine work:** `ant compile_src` and `ant compile` (full C++ / full stack). Reserve them for intentional full rebuilds only.
+(`ant compile_src` is acceptable if the narrow targets fail because the CMake tree was never prepared.)
 
 #### Station/chat C++
 
@@ -460,7 +471,7 @@ Only if `stationapi` sources changed — use that project’s narrow build (or `
 8. Forgetting **`git submodule update`** on the server after merge.  
 9. Inventing git author identities — always `daquorm89 <douweheuvel@gmail.com>`.  
 10. Large C++ changes without a rollback plan.  
-11. Editing `.cpp`/`.h` but only rebuilding Java — run `make … serverGame` and `SwgGameServer` in the CMake dir (`x/`), then restart GameServer.  
+11. Editing `.cpp`/`.h` but only rebuilding Java — run `make … serverGame` and `SwgGameServer` in the CMake dir (`build/`), then restart GameServer.  
 12. Using full `ant compile` / `ant compile_src` for a one-file change — wasteful and unnecessary when narrow targets exist.  
 13. Breaking NGE client assumptions (missing anims, bad datatable schema).
 
