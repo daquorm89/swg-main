@@ -330,8 +330,27 @@ Progress:
   now resolve the real ship via `space_transition.getContainingShip()` first.
 - ✅ `isShipLanded()` exposed to scripts (`src` commit `9b431868`, `dsrc` commit
   `1c30521e2` for the Java-side wrapper).
+- ✅ **Bugfix (in-game reports):** "Call Ship" radial never appeared, and L-exit
+  only worked in god-mode on a Hutt fighter.
+  - **Call Ship:** `isInWorld(objShip)` is true for packed ships nested in the
+    datapad (player is in-world), so the option was never offered. Replaced with
+    `getContainedBy(objShip) == self` (still packed inside the SCD).
+  - **leaveStation early gate:** original space code blocks non-god exit when
+    the seat/container is top-level (`!isIdValid(getContainedBy(container))`).
+    On the ground the ship *is* top-level, so fighters were permanently locked
+    for normal players. Allow top-level exit when atmospheric flight is allowed
+    on the current ground scene.
+  - **leaveStation space regression:** previous gate used
+    `(isSpaceScene() || !isShipLanded(...))`, which blocked leaveStation in
+    *space* for non-god players. Now landed-check is ground-only.
+  - **Landed flag never set at rest:** `m_isLanded` was only set inside a terrain
+    collision event. A ship placed by `unpackShipForPlayer` never collides, so
+    the flag stayed false forever. Added `ShipController::setLanded()` + JNI
+    `setShipLanded()`, and call it from `unpackShipForPlayer` when not in a
+    space scene so exit works immediately after call-down.
 - ⬜ Client HUD/reticle audit for non-space flight (`client-tools`).
 - ⬜ Altitude → space-scene transition trigger (`dsrc`).
+- ⬜ Client ground command table mirror (`client-tools`) if not already done.
 
 **Revert plan:** everything is additive (new datatable rows/files, new config flag
 default-on); reverting = don't merge / revert the branch merge. No existing space
