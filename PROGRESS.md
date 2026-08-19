@@ -319,6 +319,15 @@ Progress:
 - ✅ `combat_ship_player.java` — pilot-seat exit (`unpilotShip`/the "L" keybind) now
   requires `isShipLanded()` on a ground scene before it's allowed; previously it
   let you bail out mid-flight. God-mode bypass preserved. Same commit.
+
+  **Two bugs found and fixed on review (commit `559b51d0a`):** (1) the original
+  fix only checked `POB_SHIP_PILOT_SLOT_NAME` ("ship_pilot_pob") — a regular
+  single-seat fighter's pilot sits in slot `"ship_pilot"` (no `_pob`), a name
+  `cmdLeaveStation` never checked at all, so plain fighters had **no exit branch
+  whatsoever** before this fix. (2) the POB branch was calling `isShipLanded()`
+  on the interior seat sub-object instead of the actual `ShipObject`, which
+  would've permanently blocked POB pilot exit even when landed. Both branches
+  now resolve the real ship via `space_transition.getContainingShip()` first.
 - ✅ `isShipLanded()` exposed to scripts (`src` commit `9b431868`, `dsrc` commit
   `1c30521e2` for the Java-side wrapper).
 - ⬜ Client HUD/reticle audit for non-space flight (`client-tools`).
