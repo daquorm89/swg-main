@@ -275,7 +275,7 @@ Prefer checking these into `tools/` or `docs/scripts/` on a feature branch if th
 
 - **Data:** edit `.tab` (or generate via script); keep schema column counts intact.
 - **Scripts:** thin methods; match scriptHook names exactly.
-- **Engine (`src`):** only with explicit justification; rebuild with narrow `make` targets in `x/` (§6.3).
+- **Engine (`src`):** only with explicit justification; rebuild with narrow `make` targets in `build/ (§6.3).
 
 ### 6.3 Build on the server machine
 
