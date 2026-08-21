@@ -176,7 +176,7 @@ See **§5** for detail. Summary:
 
 - Only when Java/data cannot express the rule (rare).
 - Files: `.cpp` / `.h` under the **`src` submodule** (engine + game).
-- On the server machine, rebuild with **narrow Make targets** from the CMake dir (usually `x/`):  
+- On the server machine, rebuild with **narrow Make targets** from the CMake dir (`build/`):  
   `make -j$(nproc) serverGame && make -j$(nproc) SwgGameServer` (see §6.3).  
   Do **not** default to `ant compile_src` / full rebuilds.
 - Restart only the processes whose binaries you relinked.
@@ -460,7 +460,7 @@ Only if `stationapi` sources changed — use that project’s narrow build (or `
 8. Forgetting **`git submodule update`** on the server after merge.  
 9. Inventing git author identities — always `daquorm89 <douweheuvel@gmail.com>`.  
 10. Large C++ changes without a rollback plan.  
-11. Editing `.cpp`/`.h` but only rebuilding Java — run `make … serverGame` and `SwgGameServer` in the CMake dir (`x/`), then restart GameServer.  
+11. Editing `.cpp`/`.h` but only rebuilding Java — run `make … serverGame` and `SwgGameServer` in the CMake dir (`build/`), then restart GameServer.  
 12. Using full `ant compile` / `ant compile_src` for a one-file change — wasteful and unnecessary when narrow targets exist.  
 13. Breaking NGE client assumptions (missing anims, bad datatable schema).
 
