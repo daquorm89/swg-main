@@ -373,12 +373,12 @@ Prefer this over `ant compile_tab` when only one table changed.
 
 #### C++ — narrow `make` targets (`.cpp` / `.h` under `src`)
 
-C++ is built from the **CMake build directory**. On this project that directory is commonly named **`x`** (some stock Ant setups use `build/` instead — use whichever exists on the machine).
+C++ is built from the **CMake build directory**. On this project that directory is **`build/`** (`~/repos/swg-main/build`).
 
 **Standard narrow rebuild after game/combat engine edits:**
 
 ```bash
-cd ~/repos/swg-main/x    # CMake build dir
+cd ~/repos/swg-main/build    # CMake build dir
 make -j$(nproc) serverGame
 make -j$(nproc) SwgGameServer
 ```
@@ -398,7 +398,7 @@ make -j$(nproc) SwgGameServer
 ```bash
 cd ~/repos/swg-main
 ant prepare_src_x86   # or prepare_src on non-x86; creates/updates the CMake build dir
-cd x                  # or build/ if that is your cmake output dir
+cd build
 make -j$(nproc) serverGame
 make -j$(nproc) SwgGameServer
 ```
