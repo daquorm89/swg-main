@@ -314,3 +314,22 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-08-15 | Added P8 (completed): client-tools Transceiver message-dispatch startup crash fix; linked client-tools repo + its own WORKFLOW.md from this file; deferred SwgGodClient |
 | 2026-08-16 | P6.9 soft-SQF: skill-mod Strength/Quickness/Focus cost approximation (no 9-stat engine). Branch `feature/precu-soft-sqf-ham`. Explicit REVERT steps in P6 notes. |
 | 2026-08-17 | Soft SQF retune+armor tax+food modified; grants: racial mods + profession novice strength/quickness/focus; added todo.md with PR links and deploy commands. |
+| 2026-08-23 | Atmos POB: two long-standing bugs root-caused and fixed (branches not yet merged, need deploy + smoke test — see below). |
+
+---
+
+### P9 — Atmospheric flight: POB logout crash + camera-locked-to-hull (fixed 2026-08-23, unverified)
+
+**Goal:** Fix (1) client crash + broken/unrecallable chassis when logging out with a ground POB ship's interior occupied, and (2) the free-chase camera/avatar facing appearing locked to the ship's hull orientation while walking around inside a landed/flying POB.
+
+| ID | Finding | Fix | Branch |
+|----|---------|-----|--------|
+| P9.1 | `space_transition.handleLogout()` still called the old synchronous `packShip()` for players logging out inside a ship. For ground POBs this tears down doors/portals in the same tick — same `Portal::isDisabled` null-deref crash already fixed for the manual **Store** button (client-tools `Portal::~Portal` unlink + dsrc's 6s `handleAtmosDelayedStore`). Logout never got routed through that safe path, so the crash — and the resulting orphaned/unrecallable chassis — was still reachable via logout. | `handleLogout()` now detects a ground POB and routes through `storeShipInControlDeviceSafe()` (same safe eject + delayed teardown as Store) instead of calling `packShip()` directly; falls back to a plain eject if no SCD is linked. | dsrc `feature/atmos-pob-logout-safe-store` |
+| P9.2 | `FreeChaseCamera::alter()`'s ground-POB branch added the ship's current world yaw (`containShip->getObjectFrameK_w().theta()`) on top of `m_yaw_w` before calling `setDesiredYaw_w()`. But `PlayerCreatureController::realAlter` (client) already composes that same desired-yaw value through the object's live parent (ship) transform via `rotate_p2w()`/`rotate_p2o()` whenever `Game::getPlayerContainingShip()` is non-null — true here. Result: the hull's rotation was applied **twice** per frame, so the avatar's target facing over-rotated/chased the ship's heading while the (correctly cell-relative) camera itself stayed fixed — read by players as "camera locked to ship orientation." Real space flight never had this: its non-POB branch has always passed `m_yaw_w` alone with no ship-yaw term. This is a genuinely different code path than the ~15 prior camera-only attempts, all of which focused on the render/transform section rather than the movement/facing `setDesiredYaw_w` call. | Removed the `shipWorldYaw` addition in the ground-POB branch; pass cell-relative yaw only, matching the space-flight branch, and let `PlayerCreatureController`'s existing parent-transform composition do the rest. | client-tools `feature/atmos-pob-camera-no-double-yaw` |
+
+**Status: both fixes are code-reviewed and pushed but NOT merged, deployed, or smoke-tested in-game.** Next agent/session should:
+1. Deploy dsrc `feature/atmos-pob-logout-safe-store` (`build_java_single.sh` on `space_transition.java`, copy `.class`, restart GameServer).
+2. Full rebuild `SwgClient_r.exe` from client-tools `feature/atmos-pob-camera-no-double-yaw`.
+3. Test matrix: (a) log out while standing inside a ground POB interior — expect no crash, ship remains callable afterward; (b) walk around inside a landed/flying POB while it rotates — expect avatar facing and camera to stay stable relative to the interior, not chase the hull.
+4. If P9.2 only partially fixes the camera (e.g. still off during active piloting-seat transitions, or first frame after Enter), that's a distinct code path (`onLeftPilotStation` / `CreatureObject.cpp` shipStation-change resync, lines ~1212–1243) — don't re-open P9.2, open a new sub-target.
+5. Mark P9.1/P9.2 `[x]` and fold into Completed only after in-game verification — do not trust "should work" from static reading alone here; this exact bug has burned many prior guess-and-check iterations.
