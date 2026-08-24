@@ -253,6 +253,38 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 
 ---
 
+### P9 — Atmospheric flight (ground-planet ship piloting)
+
+**Goal:** Ships can be Called/Launched, boarded, piloted, and stored on ground planets (open world and POB interiors) without drift, mislocation, or camera glitches, with client HUD (planetary map, compass, datapad) usable while flying.
+
+**Repos:** `dsrc` (server logic), `src` (engine: `ShipController`, `PlayerShipController`, terrain/landed handling), `client-tools` (client: `CreatureObject.cpp`, `SwgCuiHudAction.cpp`, `PlayerShipController.cpp`)
+
+**Note on scope:** This subsystem was not originally listed in `WORKFLOW.md` §1 "in scope now" and was tracked only in chat history, not here. Added retroactively so status is visible without chat archaeology — see `WORKFLOW.md` update in this same PR.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P9.1 | Call Ship / Launch Ship radial reliability (always show on atmos-allowed planets, restore orphaned ships) | [x] (dsrc `feature/atmos-call-ship-always-show`) |
+| P9.2 | Board/Pilot works without relog (clear residual pilot state, delayed board prep) | [x] (dsrc `feature/atmos-board-and-recall-fix`) |
+| P9.3 | Ship relocates to player's current position on Launch/Recall, not stale Call coordinates | [x] (dsrc `feature/atmos-exit-at-ship-location`, engine `src` terrain-clamp work) |
+| P9.4 | Fighter ship zero velocity when landed / on pilot entry (no drift) | [x] (engine `src`: `ShipController::setLanded()` zeroes `m_shipDynamicsModel` velocity + terrain clamp; client `PlayerShipController.cpp` zero throttle+velocity once on taking pilot seat in atmosphere) |
+| P9.5 | Store Ship (pack to SCD while out) vs Pack Ship (redeed) — safe, no residual pilot/chassis-destroy | [x] (dsrc `feature/atmos-safe-store-and-eject`) |
+| P9.6 | POB (ship interior) pilot/store safety: no sink on Call/Enter/Pilot, hover kept, logout-safe delayed store | [x] (dsrc `feature/atmos-pob-*` series, merged) |
+| P9.7 | Planetary map usable while flying on a ground planet (was previously zone-map-only / space-gated) | [x] (client-tools `SwgCuiHudAction.cpp`: `planetMap` action always opens `WS_PlanetMap` when `!Game::isSpace()`) |
+| P9.8 | Compass / location display usable while flying | [x] (compass N/S/E/W is part of `SwgCuiGroundRadar`/`CuiWidgetGroundRadar`; its only `Game::isSpace()` gate disables terrain render in actual space scenes and never fires on a ground atmos flight — verified, no gate applies) |
+| P9.9 | Datapad / inventory usable while flying | [x] (traced full path `CuiActions` → `SwgCuiHudWindowManager::toggleInventory()` → no space/ship-station gate anywhere on it — verified, already unaffected) |
+| P9.10 | Interior doorway crossings inside an already-boarded POB do not spin the free-chase camera | [x] (client-tools `feature/precu-pob-doorway-yaw-fix` — see Notes) |
+| P9.11 | Client-side terrain floor clamp for atmospheric ships (companion to engine-side clamp) | [x] (client-tools `feature/atmos-map-throttle-terrain-v2`) |
+
+**Notes**
+
+- **Root cause found 2026-08-24:** `swg-main`'s submodule pointers for `dsrc` (267 commits), `src` (15 commits), and `exe` (2 commits) were stale relative to each submodule's own `master`. This made P9.2–P9.6 and the engine half of P9.4 *appear* reverted on the runnable server tree every time the documented `git submodule update --init --recursive` step ran, even though the fixes were already merged. Fixed by advancing the pointers (no app code changed) — see swg-main PR `feature/sync-submodule-pointers`. **Takeaway for future agents:** if a previously-fixed atmos (or any dsrc/src) bug appears to have "come back" on the server, check submodule pointer staleness (`git log --oneline HEAD..origin/master` inside the submodule) before re-diagnosing the bug itself.
+- **P9.10 root cause:** `CreatureObject::containedByModified()` (client) reset the free-chase camera yaw to 0 on *every* `containedBy` change while inside a landed ship, including interior cell-to-cell doorway crossings within the same already-boarded POB — not only the initial boarding transition. Walking toward cell-relative "forward" masked it; walking the other way spun the camera 180°. Fixed by comparing the old container's `ShipObject::getContainingShip()` to the new one and only resetting yaw on an actual first boarding.
+- Client fixes require a `SwgClient` rebuild + binary swap per `client-tools` `WORKFLOW.md` §3/§6 — TRE/data sync alone does not deploy compiled UI/engine changes.
+
+**Exit criteria:** All sub-targets `[x]` and in-game smoke-tested on the server + a rebuilt client together (Call → Launch → Board/Pilot no relog, no drift → fly → interior doorway both directions → map/compass/datapad usable → Store/Recall at current position).
+
+---
+
 ## Completed projects
 
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
@@ -314,3 +346,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-08-15 | Added P8 (completed): client-tools Transceiver message-dispatch startup crash fix; linked client-tools repo + its own WORKFLOW.md from this file; deferred SwgGodClient |
 | 2026-08-16 | P6.9 soft-SQF: skill-mod Strength/Quickness/Focus cost approximation (no 9-stat engine). Branch `feature/precu-soft-sqf-ham`. Explicit REVERT steps in P6 notes. |
 | 2026-08-17 | Soft SQF retune+armor tax+food modified; grants: racial mods + profession novice strength/quickness/focus; added todo.md with PR links and deploy commands. |
+| 2026-08-24 | Added P9 (atmospheric flight) retroactively — was tracked only in chat history. Found and fixed root cause of "reverted" atmos fixes: stale `swg-main` submodule pointers (dsrc 267 / src 15 / exe 2 commits behind their own masters); see `feature/sync-submodule-pointers`. Fixed client-side POB interior doorway camera-yaw spin (`feature/precu-pob-doorway-yaw-fix` on client-tools). Confirmed planetary map / compass / datapad already usable while flying on already-merged client-tools main. |

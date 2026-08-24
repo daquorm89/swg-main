@@ -28,6 +28,7 @@ Restore **Pre-CU skill-based professions and combat presentation** on top of an 
 | **Items / weapons / armor** (as needed for professions) | Templates, certs, mods required for Pre-CU lines | Client must still load assets |
 | **Jedi / Force** | Pre-CU powers / progression as targeted | Partial; Force pool may lag vigor mapping |
 | **UI / client** | Must remain NGE-client compatible | No client edits unless explicitly approved |
+| **Atmospheric flight (ground-planet ship piloting)** | Call/Launch/Board/Pilot/Store ships on ground planets and POB interiors, no drift/mislocation/camera glitches, HUD (map/compass/datapad) usable while flying | Status tracked as P9 in `PROGRESS.md`; touches `dsrc`, `src` (engine), and `client-tools` together — client changes need an explicit `SwgClient` rebuild, not just server deploy |
 
 ### Explicitly out of scope for now
 
