@@ -371,6 +371,81 @@ find ~/repos/swg-main -name '<file>.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;
 
 Prefer this over `ant compile_tab` when only one table changed.
 
+#### Templates (`.tpf`) — TemplateCompiler
+
+After editing object templates under `dsrc/.../object/`:
+
+```bash
+cd ~/repos/swg-main
+./exe/linux/bin/TemplateCompiler -compile dsrc/sku.0/sys.<server|shared>/compiled/game/object/<path>/<name>.tpf
+```
+
+Compiled `.iff` files land under the matching tree in `~/repos/swg-main/data/sku.0/...` (not only next to the `.tpf`). Confirm with `find ~/repos/swg-main/data -name '<name>.iff'`.
+
+#### New craftable / spawnable objects (client + CRC) — required every time
+
+**TemplateCompiler alone is not enough.** New object templates that the **client** must display (spawn, inventory, craft list) also need:
+
+1. **Shared IFFs on the client** at game paths (not under `data/sku.0/...`):
+
+   | Server build output | Client path |
+   |---------------------|-------------|
+   | `~/repos/swg-main/data/sku.0/sys.shared/compiled/game/object/.../shared_<name>.iff` | `object/.../shared_<name>.iff` |
+
+   Put them in the client loose tree and/or custom TRE at those virtual paths.
+
+2. **Object template CRC string table rebuild** (registers new template paths):
+
+   ```bash
+   cd ~/repos/swg-main
+   # Miff must be on PATH (CRC script shells out to it)
+   export PATH="$HOME/repos/swg-main/build/bin:$PATH"
+   which Miff
+
+   # New .iff files must already exist under data/sku.0/.../object/
+   python3 utils/build_object_template_crc_string_tables.py
+   ```
+
+   Verify the new paths are registered:
+
+   ```bash
+   strings data/sku.0/sys.server/built/game/misc/object_template_crc_string_table.iff | grep <name>
+   strings data/sku.0/sys.client/built/game/misc/object_template_crc_string_table.iff | grep <name>
+   ```
+
+   Install on the **server runtime**:
+
+   ```bash
+   cp -f ~/repos/swg-main/data/sku.0/sys.server/built/game/misc/object_template_crc_string_table.iff \
+         ~/repos/swg-main/serverdata/misc/object_template_crc_string_table.iff
+   ```
+
+   Install on the **client**:
+
+   | Server file | Client path |
+   |-------------|-------------|
+   | `~/repos/swg-main/data/sku.0/sys.client/built/game/misc/object_template_crc_string_table.iff` | `misc/object_template_crc_string_table.iff` |
+
+   Size: a full rebuild is often ~2 MB (client, shared-only) and larger for server (all objects). Prefer **`grep` for the new template name** over assuming a larger file is “better.”
+
+3. **STF display names** (own keys — do not borrow other items’ strings):
+
+   - Template `objectName` / `detailedDescription` point at string tables (e.g. `craft_droid_ingredients_n` / `_d`).
+   - On the client, add the **new** keys in `string/en/<table>.stf` (Sytner’s or equivalent).
+   - Without STF entries the item can still spawn/grant but show a missing or raw key name.
+
+4. **Schematic grant path** (if craftable):
+
+   - Add the draft schematic to the correct group in `schematic_group.tab` → DataTableTool → copy `.iff` to `data/` and `serverdata/datatables/crafting/` as for any other table.
+   - Skill box that grants that group (e.g. DE `crafting_droidengineer_production_04` → `craftdroidgenmodGroupE`).
+   - **Client does not need** the non-`shared_` server schematic/tangible IFFs.
+
+5. **Restart** GameServer and a **full client** restart after CRC + shared IFF deploy.
+
+**Failure mode without CRC / shared client IFF:** server `grantSchematic` or create may report success; client shows **nothing** (no error). That is expected until steps 1–2 are done.
+
+**Reference:** SWG-Source wiki [How To Create Player Quests](https://github.com/SWG-Source/swg-main/wiki/How-To-Create-Player-Quests), [Adding New Objects To The SWG Server](https://github.com/SWG-Source/swg-main/wiki/Adding-New-Objects-To-The-SWG-Server).
+
 #### C++ — narrow `make` targets (`.cpp` / `.h` under `src`)
 
 C++ is built from the **CMake build directory**. On this project that directory is **`build/`** (`~/repos/swg-main/build`).
