@@ -253,6 +253,32 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 
 ---
 
+### P9 — Droid command module: stale submodule pointer + corrupted obj_attr_n.stf
+
+**Goal:** Multi-droid command module grants the correct number of extra call-out slots, and `obj_attr_n.stf` loads cleanly (no fallback `obj_attr_n:key` text anywhere).
+
+**Primary paths:** `dsrc` submodule pointer (top-level `swg-main`); `serverdata/string/en/obj_attr_n.stf`
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P9.1 | Diagnose why crafted module showed rating "3", droid showed "12", but only granted 1 extra slot | [x] |
+| P9.2 | Bump `swg-main`'s `dsrc` submodule pointer from `81aff3771` (pre-#136) to `master` (`c96ae1e6c`), which already contains PRs #137–#140 fixing the schematic's `droid_command_module` experiment range (`10..100` → `0..5`) and `MAX_EXTRA_DROID_COMMAND_SLOTS` (`100` → `5`) | [x] (branch `feature/bump-dsrc-droid-command-fixes`) |
+| P9.3 | Diagnose `obj_attr_n.stf` corruption: a locally-edited copy had duplicate id `1492` in the id-table, which fails `LocalizedStringTable::load_0001`'s duplicate-key insert check and aborts loading the **entire table** — explains why *all* attributes showed raw `obj_attr_n:key` text, not just the new ones | [x] |
+| P9.4 | Provide corrected `obj_attr_n.stf` (original 1491 entries + 3 new entries with clean unique ids 1492–1494: `recolor_remaining`, `droid_command_module`, `pet_stats.droid_command_module`) | [x] |
+| P9.5 | Merge `feature/bump-dsrc-droid-command-fixes` PR, pull on server tree, rebuild Java + recompile `shared_multi_droid_command_module.tpf` → `.iff`, rebuild CRC string table, push to client, restart | [ ] |
+| P9.6 | Deploy corrected `obj_attr_n.stf` to server + client string paths, restart | [ ] |
+| P9.7 | Re-craft a fresh multi-droid command module post-deploy (existing crafted modules still carry the old bad `10..100`-scale rating baked into their objvar and will not self-correct) and smoke-test: rating 1–5 on the module → same value on the droid's `module_data.droid_command` → call up to `1 + rating` droids | [ ] |
+
+**Notes**
+
+- Root cause of P9.1/P9.2: `dsrc` itself was never broken — the fix already existed on `dsrc` master via PR #140. `swg-main`'s submodule pointer just never moved past the earlier `feature/precu-droid-command-module-rebase` merge (#136), so the locally-running server tree was still building the old broken schematic/constant even though upstream `dsrc` was fine. No new source edits were needed, only the pointer bump.
+- Root cause of P9.3: confirmed against the actual C++ loader (`LocalizedStringTable::load_0001` / `LocalizedStringTableRW::write` in `src/external/ours/library/localization/src/shared/`). Format is: header (magic `0xabcd` + version + nextId + numEntries) → id-table (ascending, unique ids required) → name-table (alphabetical `key → id`). A duplicate id in the id-table causes the whole-file load to fail via a `std::map` insert-collision check, which is why the symptom was "every attribute string is now raw text," not just the newly-added ones.
+- `serverdata/string/en/obj_attr_n.stf` in the repo (and `string/ja/obj_attr_n.stf`) were **not** touched by the corruption — they still match the known-good baseline. The corrupted file only existed in a local/uncommitted working copy.
+
+**Exit criteria:** P9.5–P9.7 done; module rating verified end-to-end in-game with no `obj_attr_n:` fallback text anywhere in the attribute UI.
+
+---
+
 ## Completed projects
 
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
