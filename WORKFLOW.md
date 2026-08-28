@@ -420,6 +420,37 @@ Compiled `.iff` files land under the matching tree in `~/repos/swg-main/data/sku
          ~/repos/swg-main/serverdata/misc/object_template_crc_string_table.iff
    ```
 
+3. **Load template CRCs into the Oracle DB** (required — file CRC alone is not enough):
+
+   The GameServer resolves template names via the **`object_templates`** table. After every CRC rebuild that adds new objects:
+
+   ```bash
+   cd ~/repos/swg-main
+   export PATH="$HOME/repos/swg-main/build/bin:$PATH"
+
+   # Regenerate SQL from the server CRC .tab (paths under dsrc/.../built/.../misc/)
+   perl src/game/server/database/templates/processTemplateList.pl \
+     < dsrc/sku.0/sys.server/built/game/misc/object_template_crc_string_table.tab \
+     > build/templates.sql
+
+   # Confirm new templates are in the SQL
+   grep -i '<name>' build/templates.sql | head
+
+   # Load into DB — uses db_username / db_password / dbip / db_service from build.properties
+   ant load_templates
+   ```
+
+   Manual alternative (same credentials as `build.properties`):
+
+   ```bash
+   grep -E '^db_username|^db_password|^dbip|^db_service' build.properties
+   sqlplus 'USER/PASS@HOST/SERVICE' @build/templates.sql
+   # e.g. sqlplus 'swg/swg@127.0.0.1/swg' @build/templates.sql
+   ```
+
+   Run all of the above from **`~/repos/swg-main`** (not from a `dsrc/...` subdirectory).  
+   Without this step the server can log `Unable to find template name for crc …` and create/spawn shows nothing even when the `.iff` and CRC string table files are present.
+
    Install on the **client**:
 
    | Server file | Client path |
@@ -428,21 +459,21 @@ Compiled `.iff` files land under the matching tree in `~/repos/swg-main/data/sku
 
    Size: a full rebuild is often ~2 MB (client, shared-only) and larger for server (all objects). Prefer **`grep` for the new template name** over assuming a larger file is “better.”
 
-3. **STF display names** (own keys — do not borrow other items’ strings):
+4. **STF display names** (own keys — do not borrow other items’ strings):
 
    - Template `objectName` / `detailedDescription` point at string tables (e.g. `craft_droid_ingredients_n` / `_d`).
    - On the client, add the **new** keys in `string/en/<table>.stf` (Sytner’s or equivalent).
    - Without STF entries the item can still spawn/grant but show a missing or raw key name.
 
-4. **Schematic grant path** (if craftable):
+5. **Schematic grant path** (if craftable):
 
    - Add the draft schematic to the correct group in `schematic_group.tab` → DataTableTool → copy `.iff` to `data/` and `serverdata/datatables/crafting/` as for any other table.
    - Skill box that grants that group (e.g. DE `crafting_droidengineer_production_04` → `craftdroidgenmodGroupE`).
    - **Client does not need** the non-`shared_` server schematic/tangible IFFs.
 
-5. **Restart** GameServer and a **full client** restart after CRC + shared IFF deploy.
+6. **Restart** GameServer and a **full client** restart after CRC + shared IFF deploy.
 
-**Failure mode without CRC / shared client IFF:** server `grantSchematic` or create may report success; client shows **nothing** (no error). That is expected until steps 1–2 are done.
+**Failure mode without CRC / shared client IFF:** server `grantSchematic` or create may report success; client shows **nothing** (no error). That is expected until steps 1–3 are done (shared IFF, CRC files, and DB load).
 
 **Reference:** SWG-Source wiki [How To Create Player Quests](https://github.com/SWG-Source/swg-main/wiki/How-To-Create-Player-Quests), [Adding New Objects To The SWG Server](https://github.com/SWG-Source/swg-main/wiki/Adding-New-Objects-To-The-SWG-Server).
 
