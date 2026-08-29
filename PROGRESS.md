@@ -281,6 +281,34 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 
 ---
 
+
+### P10 — Craftable AT-XT Walker vehicle (driveable + splash blasters)
+
+**Goal:** Craftable AT-XT Walker deed that creates a normal driveable vehicle (parks when unmounted; not an autonomous droid). While driving, left-click / default attack uses a TARGET_AREA splash blaster (launcher-style).
+
+**Repo / branch:** `dsrc` `feature/craftable-at-xt-vehicle` — https://github.com/daquorm89/dsrc/compare/feature/craftable-at-xt-vehicle
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P10.1 | Draft schematic + shared schematic (`walker_at_xt`) | [x] (branch) |
+| P10.2 | Craftable deed (`walker_at_xt_deed`, object_ref=`atxt_walker`) | [x] (branch) |
+| P10.3 | Crafting script `crafting_vehicle_at_xt` (DE novice skills) | [x] (branch) |
+| P10.4 | `schematic_group` → `craftVehicleGroupA` | [x] (branch) |
+| P10.5 | `at_xt_combat` mount override → `at_xt_vehicle_blaster` | [x] (branch) |
+| P10.6 | `combat_data` + `command_table` + `combat_actions` splash blaster | [x] (branch) |
+| P10.7 | Merge dsrc PR, TemplateCompiler + CRC + DB templates, DataTableTool for combat/command/schematic_group, deploy shared IFFs to client, restart, smoke-test | [ ] |
+
+**Notes**
+
+- Reuses existing `walker_at_xt_player` vehicle templates and `vehicle_template.tab` entry `atxt_walker`.
+- Splash modelled after heavy acid launcher style (`TARGET_AREA`, radius 8, energy overload damage).
+- Grant path today: Engineering phase4 master `craftVehicleGroupA` (same group as Basilisk). Pre-CU profession grant can be wired later if needed.
+- Deploy requires full new-object checklist in WORKFLOW §6.3 (shared IFF, CRC string tables, `ant load_templates`, client shared IFFs).
+
+**Exit criteria:** P10.7 done; craft → deed → call vehicle → drive → blaster splash verified in-game.
+
+---
+
 ## Completed projects
 
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
@@ -341,4 +369,5 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-08-13 | P1 posture sub-targets P1.9–P1.12; add P4 command queue, P5 targeting, P6 HAM reconnect; evidence snapshot; deferrals clarified |
 | 2026-08-15 | Added P8 (completed): client-tools Transceiver message-dispatch startup crash fix; linked client-tools repo + its own WORKFLOW.md from this file; deferred SwgGodClient |
 | 2026-08-16 | P6.9 soft-SQF: skill-mod Strength/Quickness/Focus cost approximation (no 9-stat engine). Branch `feature/precu-soft-sqf-ham`. Explicit REVERT steps in P6 notes. |
+| 2026-08-29 | P10 craftable AT-XT Walker vehicle (driveable + splash blaster); dsrc branch `feature/craftable-at-xt-vehicle` |
 | 2026-08-17 | Soft SQF retune+armor tax+food modified; grants: racial mods + profession novice strength/quickness/focus; added todo.md with PR links and deploy commands. |
