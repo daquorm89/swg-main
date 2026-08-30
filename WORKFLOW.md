@@ -64,6 +64,54 @@ Restore **Pre-CU skill-based professions and combat presentation** on top of an 
 - **Merge order:** merge the submodule repo first (e.g. `dsrc`), then parent `swg-main` if the pointer must move.
 - **Do not commit tokens** into `.gitmodules` or history. Do not store PATs in project memory files.
 
+### 2.2.1 Submodule pins — mandatory rules (prevent silent rollbacks)
+
+`git submodule update` does **not** mean “get the newest `dsrc`.” It means “check out **exactly** the commit SHA recorded in the **current parent branch**.”
+
+| Rule | Detail |
+|------|--------|
+| **Default content branch** | Day-to-day server work uses **`dsrc` `origin/master`**. That is where AT-XT, droid command module, Pre-CU skill grants, etc. land after merge. |
+| **Parent branch decides the pin** | `swg-main` `master` and each `swg-main` feature branch each store their own `dsrc` SHA. Checking out `feature/atmospheric-flight` (or any long-lived feature) and running `submodule update` will move `dsrc` to **that feature’s pin**, which may be an old or **divergent** commit. |
+| **Divergent feature pins are dangerous** | Example: `dsrc` commit `ba2ef990` lives on `feature/atmospheric-flight` and is **not** an ancestor of `dsrc` `master`. Updating the submodule to it **drops** every master-only change (AT-XT, multi-droid command module fixes, etc.) from the working tree. Nothing was deleted on GitHub — the local tree simply switched lineage. |
+| **Never “fix” parent divergence by rebasing a feature onto master blindly** | If `git pull --rebase origin master` while on a feature branch conflicts (e.g. `WORKFLOW.md`), run `git rebase --abort` unless you intentionally meant to rebase that feature. For day-to-day content, switch to `master` instead. |
+| **After merging a `dsrc` PR, bump the parent pin** | Merge on `daquorm89/dsrc` first, then open a small `swg-main` PR that only updates the `dsrc` gitlink to the new `master` SHA. Until that lands, `submodule update` on `swg-main` `master` will keep an **old** `dsrc`. |
+| **Verify after every submodule move** | `cd dsrc && git log -1 --oneline` and confirm expected files (e.g. `walker_at_xt.tpf`, `multi_droid_command_module.tpf`). |
+
+**Safe update when you want current game content (`dsrc` master):**
+
+```bash
+cd ~/repos/swg-main
+git checkout master
+git pull origin master
+cd dsrc
+git fetch origin
+git checkout master
+git reset --hard origin/master
+git log -1 --oneline   # must match daquorm89/dsrc master tip
+cd ..
+# Optional: if parent master pin is still behind, either merge a bump PR or temporarily
+# leave dsrc on origin/master for builds (do not commit the pin from a dirty feature branch).
+```
+
+**Unsafe pattern (caused the 2026-08-30 rollback):**
+
+```bash
+# On swg-main feature/atmospheric-flight (or any branch with a stale/divergent dsrc pin):
+git pull origin master          # may conflict / diverge
+git submodule update --init --recursive   # checks out the FEATURE's dsrc SHA, not dsrc master
+```
+
+**If `dsrc` was accidentally moved to a feature SHA:**
+
+```bash
+cd ~/repos/swg-main/dsrc
+git fetch origin
+git checkout master
+git reset --hard origin/master
+```
+
+**Atmospheric flight / other long-lived `dsrc` features:** keep them on their own `dsrc` feature branch and merge into `dsrc` `master` via PR when ready. Do **not** pin the runnable server’s daily `dsrc` to a divergent feature tip unless you are actively developing only that feature and accept missing master content.
+
 ### 2.3 Server vs GitHub
 
 | Location | Role |
@@ -72,13 +120,16 @@ Restore **Pre-CU skill-based professions and combat presentation** on top of an 
 | `~/repos/swg-main/` on the server machine | **Runnable** tree (build, DataTableTool, GameServer) |
 | AI sandbox clone (e.g. `/home/claude/swg-main`) | Edit/push only; **not** the live server |
 
-After a merge on GitHub, on the **server machine**:
+After a merge on GitHub, on the **server machine** (from **`swg-main` `master`**, not a random feature branch):
 
 ```bash
 cd ~/repos/swg-main
+git checkout master
 git pull origin master
 git submodule update --init --recursive
-# rebuild whatever changed (Java / DataTableTool) — see §7
+# If dsrc pin on master is behind daquorm89/dsrc master, also:
+cd dsrc && git fetch origin && git checkout master && git reset --hard origin/master && cd ..
+# rebuild whatever changed (Java / DataTableTool) — see §6
 # restart GameServer
 ```
 
@@ -563,7 +614,9 @@ Only if `stationapi` sources changed — use that project’s narrow build (or `
 5. Editing parent repo only while the real change is in **`dsrc`**.  
 6. Forgetting **DataTableTool** after `.tab` edits, setting `SRC` to a non-existent `dsrc/…/*.iff` path (tool writes under `data/…`), or compiling but **not copying** the new `.iff` to every existing copy under `~/repos/swg-main`. Always use the SUCCESS path as `SRC`.  
 7. Giving truncated paths (`serverdata/.../file.iff`) in docs or agent instructions — always full paths from the server root.  
-8. Forgetting **`git submodule update`** on the server after merge.  
+8. Forgetting **`git submodule update`** on the server after merge — **or** running it on a **feature branch** whose `dsrc` pin is stale/divergent (silently rolls `dsrc` off `master`; see §2.2.1).
+8b. Assuming `git submodule update` means “newest `dsrc`.” It only checks out the **parent branch’s recorded SHA**.
+8c. Rebasing `swg-main` feature branches onto `master` without intent; on conflict use `git rebase --abort` unless you meant to integrate that feature.  
 9. Inventing git author identities — always `daquorm89 <douweheuvel@gmail.com>`.  
 10. Large C++ changes without a rollback plan.  
 11. Editing `.cpp`/`.h` but only rebuilding Java — run `make … serverGame` and `SwgGameServer` in the CMake dir (`build/`), then restart GameServer.  
