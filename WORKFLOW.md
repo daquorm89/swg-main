@@ -528,6 +528,71 @@ Compiled `.iff` files land under the matching tree in `~/repos/swg-main/data/sku
 
 **Reference:** SWG-Source wiki [How To Create Player Quests](https://github.com/SWG-Source/swg-main/wiki/How-To-Create-Player-Quests), [Adding New Objects To The SWG Server](https://github.com/SWG-Source/swg-main/wiki/Adding-New-Objects-To-The-SWG-Server).
 
+#### Client loose-file staging (standard copy)
+
+After DataTableTool / TemplateCompiler / CRC rebuild, stage **shared** client files to the NAS client tree. Default destination on this project:
+
+`/mnt/D-NAS-1/Downloads/SWG`
+
+Use only paths that exist on the server after a successful build (`ls` first; skip missing files).
+
+```bash
+CLIENT=/mnt/D-NAS-1/Downloads/SWG
+SERVER=/home/swg/repos/swg-main
+
+mkdir -p \
+  "$CLIENT/datatables/command" \
+  "$CLIENT/datatables/combat" \
+  "$CLIENT/datatables/crafting" \
+  "$CLIENT/object/weapon/ranged/vehicle" \
+  "$CLIENT/object/draft_schematic/vehicle/civilian" \
+  "$CLIENT/object/tangible/deed/vehicle_deed" \
+  "$CLIENT/string/en" \
+  "$CLIENT/misc"
+
+# Shared datatables (copy only what you rebuilt)
+cp -f "$SERVER/data/sku.0/sys.shared/compiled/game/datatables/combat/combat_data.iff" \
+      "$CLIENT/datatables/combat/combat_data.iff"
+cp -f "$SERVER/data/sku.0/sys.shared/compiled/game/datatables/command/command_table.iff" \
+      "$CLIENT/datatables/command/command_table.iff"
+cp -f "$SERVER/data/sku.0/sys.shared/compiled/game/datatables/crafting/schematic_group.iff" \
+      "$CLIENT/datatables/crafting/schematic_group.iff"
+
+# Shared object IFFs — example: AT-XT weapon / schematic / deed (add more object/... lines as needed)
+cp -f "$SERVER/data/sku.0/sys.shared/compiled/game/object/weapon/ranged/vehicle/shared_at_xt_vehicle_blaster.iff" \
+      "$CLIENT/object/weapon/ranged/vehicle/shared_at_xt_vehicle_blaster.iff"
+cp -f "$SERVER/data/sku.0/sys.shared/compiled/game/object/draft_schematic/vehicle/civilian/shared_walker_at_xt.iff" \
+      "$CLIENT/object/draft_schematic/vehicle/civilian/shared_walker_at_xt.iff"
+cp -f "$SERVER/data/sku.0/sys.shared/compiled/game/object/tangible/deed/vehicle_deed/shared_walker_at_xt_deed.iff" \
+      "$CLIENT/object/tangible/deed/vehicle_deed/shared_walker_at_xt_deed.iff"
+
+# String tables (serverdata is the runtime copy after STF edits)
+cp -f "$SERVER/serverdata/string/en/pet_deed.stf" \
+      "$CLIENT/string/en/pet_deed.stf"
+
+# Client CRC string table (only after build_object_template_crc_string_tables.py)
+cp -f "$SERVER/data/sku.0/sys.client/built/game/misc/object_template_crc_string_table.iff" \
+      "$CLIENT/misc/object_template_crc_string_table.iff"
+```
+
+**Rules**
+
+| Rule | Detail |
+|------|--------|
+| **Client paths** | Game virtual paths (`datatables/…`, `object/…`, `string/en/…`, `misc/…`) — **not** `data/sku.0/…` |
+| **Shared only** | Copy `sys.shared` / `shared_*` IFFs and STFs the client loads. Do **not** copy server-only Java, `sys.server` non-shared IFFs, or `command_tables_server*.iff` |
+| **Missing file** | If `cp` fails, that asset was not compiled yet — run DataTableTool / TemplateCompiler / CRC first |
+| **After copy** | Restart GameServer if server data changed; always **full client restart** (not only relog) |
+
+General pattern for any new shared object:
+
+```bash
+# SERVER file under data/sku.0/sys.shared/compiled/game/<virtual/path>/shared_<name>.iff
+# CLIENT file at <virtual/path>/shared_<name>.iff under $CLIENT
+cp -f "$SERVER/data/sku.0/sys.shared/compiled/game/<virtual/path>/shared_<name>.iff" \
+      "$CLIENT/<virtual/path>/shared_<name>.iff"
+```
+
 #### C++ — narrow `make` targets (`.cpp` / `.h` under `src`)
 
 C++ is built from the **CMake build directory**. On this project that directory is **`build/`** (`~/repos/swg-main/build`).
