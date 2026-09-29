@@ -328,7 +328,7 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 | P11.1 | Feasibility check against dsrc/src | [x] |
 | P11.2 | Programs: rows in `droid_commands.tab` + `droid_program_size.tab` (4 tiers, per-track names or one shared name per tier) + `COMMANDS` grants in `skills.tab` (12 boxes) | [ ] |
 | P11.3 | Strings in `space/droid_commands` (`_commandname`, `_chipname`, `_description`, spam text) | [ ] |
-| P11.4 | Squad rows + fighter mobiles: 3 ships per tier per track; **Freelancer has no ready `neutral` fighter set** (see risks) | [ ] |
+| P11.4 | Squad rows + wingman mobiles: 3 ships per tier per track. Alliance = `reb_*_tier1..5`, Imperial = `escort_tie_*_tier1..5`. **Freelancer = shipwright ships (Scyk, Dunelizard, Kihraxz, Ixiyen, Rihkxyrk, Kimogila)**, new `wingman_freelancer_*` mobile rows (see Freelancer ships note) | [ ] |
 | P11.5 | `callWingmen` handler + `space_combat` spawn helper (spawn behind pilot, tag `commanderPlayer`, store squad id on the pilot) | [ ] |
 | P11.6 | Behaviour: `ship_ai.squadFollow` the player's ship; attack pilot's target (`getLookAtTarget` + `squadSetPrimaryTarget`); retaliate on `OnShipWasHit` | [ ] |
 | P11.7 | Lifecycle: despawn on resend, leave-space, hyperspace/zone, ship destroyed, logout, droid interface removed | [ ] |
@@ -338,7 +338,12 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 **Notes / risks**
 
 - **Guard pattern differs for players.** The bomber-strike escorts use `squadSetGuardTarget`, which takes a **squad id**; a player's ship is not in a squad. Use follow + attack-my-target + retaliate instead.
-- **Freelancer fighters:** mobiles exist for `imperial` (321 rows) and `rebel` (209) but none with `space_faction = neutral`. Needs new mobile rows with a faction that is hostile to what the pilot fights.
+- **Freelancer ships (requested: shipwright-craftable ships).** Findings from `dsrc` (2026-09-29):
+  - Scyk (`scyk_s01/s02`), Dunelizard (`dunelizard_s01/s02`), Ixiyen (`ixiyen_s01..s03`), Rihkxyrk and Kihraxz exist as ship objects (`sys.server/compiled/game/object/ship/*.tpf`) and AI mobiles in `space_mobile.tab`, **tier 6-10 only**, all `space_faction = pirate`. (Spelling is **Kihraxz**, not Kihrakx.)
+  - Kimogila has **no tier 6+ ship of its own**: the AI `kimogila_*_tier1..5` rows reuse `hutt_light_s02_*` / `hutt_medium_s02_*` ship templates (pirate faction). Either use those, or skip Kimogila.
+  - **Faction problem:** the existing rows are `pirate`, enemy of imperial/rebel/civilian/etc. Wingmen need new mobile rows (copy of the ship, `intXP` 0, friendly faction/`alliedFactions`, wingman member script) so they are not hostile to the pilot or its allies.
+  - **Scale problem:** tier 6-10 ships are far stronger than the tier 1-5 TIE / A-wing set used for the other two tracks. Freelancer wingmen would out-class Alliance/Imperial ones unless strength is normalized (pick lower-tier variants or tune loadouts).
+  - **Open question (needs owner call):** six ship types for four program tiers. Proposed default: one type per tier, ordered weakest to strongest by shipwright tier/loadout; the two unused ships become mixed-squad options or later tiers. Ordering to be confirmed.
 - **Shared tables:** `skills.tab` and `droid_program_size.tab` are under `sys.shared`; after DataTableTool the client needs the new `.iff` copies (see WORKFLOW.md staging section).
 - **Droid memory:** program size must fit the droid interface capacity; check how capacity scales per interface tier before fixing the sizes.
 - **Assumption to confirm:** re-sending the program replaces the existing wingmen (no stacking).
