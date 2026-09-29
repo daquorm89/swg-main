@@ -304,37 +304,51 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 - Files needed on client after DataTableTool: `combat_data.iff`, `command_table.iff` (shared tables; see WORKFLOW.md staging section). Full client restart.
 - Revert: restore the three edited rows and Java method from `dsrc` master (`40f8dd73a`).
 
-### P11 — Space wingmen (AI escort ships summoned via a ship droid command)
+### P11 — Space wingmen: tiered droid programs that spawn escort fighters
 
-**Goal:** A pilot with a droid interface installed can call 1–3 AI wingmen in space that follow the player's ship, fight the player's target, and return fire when the player is hit. Temporary, capped, on cooldown, despawned cleanly. Java + datatables only (no C++ in Phase 1).
+**Goal:** A pilot learns wingman **droid programs** (same mechanism as the reactor/weapon/shield programs) at each droid-interface skill tier of the **Freelancer / Alliance / Imperial** tracks. Running a program spawns **3 fighters** of matching strength that follow and guard the pilot's ship.
 
-**Feasibility verdict (2026-09-29, verified against `dsrc` master + `src`):** feasible. Grok's first pass was mostly right but wrong on one key point: `ship_ai.squadSetGuardTarget` needs a *squad id* as target and player ships are not in a `SpaceSquad`, so the bomber-strike "follow + guard" pattern cannot be copied 1:1. Use follow + explicit targeting instead.
+**Verdict:** Feasible with **Java + datatables only, no C++.** Follows the existing droid-program path and the bomber-strike player-commanded-squad pattern.
+
+**Wingmen last until any of:** all 3 destroyed / program re-sent (replaces the current set, no stacking) / pilot leaves space, hyperspaces or zones / pilot's ship is destroyed or pilot logs out.
+
+**How it maps onto existing code (all under `~/repos/swg-main/dsrc/sku.0/`)**
+
+| Piece | Existing mechanism | Wingmen work |
+|-------|--------------------|--------------|
+| Learning | `sys.shared/compiled/game/datatables/skill/skills.tab` `COMMANDS` column on `pilot_neutral_droid_01..04` (Freelancer), `pilot_rebel_navy_droid_01..04` (Alliance), `pilot_imperial_navy_droid_01..04` (Imperial). `space_combat.getDroidCommands` lists any granted command containing `droidcommand`; the player burns it onto a memory chip (`script/space/crafting/droid_memory_module.java`). | Add one wingmen program per tier to those 12 boxes (4 tiers x 3 tracks) |
+| Program definition | `sys.server/compiled/game/datatables/space_combat/droid_commands.tab` (row per program; `strMessageHandlerOnPlayer` = handler on the player, like `zoneToKessel`). Memory cost in `sys.shared/compiled/game/datatables/space_command/droid_program_size.tab`. | New rows: handler `callWingmen`, `fltBaseDelay` as cooldown; sizes in the existing 5/10/20/25 scale |
+| Execution | client `/droid <name>` -> `combat_ship_player.droid()` -> `space_combat.performDroidCommands` -> `doDroidPreCheck` (interface installed + enabled, droid present, program on datapad, cooldown) -> handler | New handler `callWingmen` in `script/space/combat/combat_ship_player.java` |
+| Spawn | `space_create.createSquadHyperspace` + `squads.tab` rows (`squad_plyr_cmd_*`); tier-numbered mobiles `escort_tie_*_tier1..5` (Imperial) and `reb_awing_tier1..5` etc. (Alliance) already exist | New `squad_plyr_wingmen_<track>_<tier>` rows, 3 ships each, member script like `space.command.player_cmd_tie_bomber_escort` |
+| Kill credit | `space_combat.registerDamageDoneToShip` credits AI ships that carry a `commanderPlayer` objvar to that player | Set `commanderPlayer` on each wingman |
+| Cleanup | `OnLogout` -> `space_combat.strikeBomberCleanup`; member script `OnDestroy` notifies commander | Add wingmen cleanup to the same hooks |
 
 | ID | Sub-target | Status |
 |----|------------|--------|
-| P11.1 | Feasibility research (natives, droid command path, squads, hit callbacks) | [x] |
-| P11.2 | Find how droid program chips are made (datapad item with `strDroidCommand` objvar) and how the client lists/learns them; check client-tools for any client-side program table or strings needed | [ ] |
-| P11.3 | Add `droid_commands.tab` rows (`droidcommand_callwingmen`, `..._dismisswingmen`, optional `..._wingmenattack`) with `strMessageHandlerOnPlayer` handlers; cooldown via `fltBaseDelay` | [ ] |
-| P11.4 | New `library/space_wingmen.java`: spawn via `space_create.createSquadHyperspace`, tag members `commanderPlayer`, store squad id on the player ship, `squadFollow(squad, playerShip, dir, dist)`, `squadSetAttackOrders(RETURN_FIRE)` | [ ] |
-| P11.5 | Combat behaviour: "attack my target" = `getLookAtTarget(ship)` then `squadSetPrimaryTarget`; defend = hook `OnShipWasHit` on the player ship and set the attacker as the squad's primary target | [ ] |
-| P11.6 | New `squads.tab` rows + faction-appropriate fighter templates (existing `escort_tie_*` squads are Imperial-only); cap count by droid interface rating | [ ] |
-| P11.7 | Lifecycle cleanup: ship destroyed, pilot leaves ship, zone/hyperspace, logout, droid interface removed/disabled, TTL timer; never leave orphan squads | [ ] |
-| P11.8 | Decide + implement kill credit/XP/loot ownership and friendly-fire rules for wingman kills | [ ] |
-| P11.9 | Balance pass (count, durability, damage, cooldown, TTL) so it assists rather than replaces the pilot | [ ] |
-| P11.10 | Deploy + in-game smoke test | [ ] |
+| P11.1 | Feasibility check against dsrc/src | [x] |
+| P11.2 | Programs: rows in `droid_commands.tab` + `droid_program_size.tab` (4 tiers, per-track names or one shared name per tier) + `COMMANDS` grants in `skills.tab` (12 boxes) | [ ] |
+| P11.3 | Strings in `space/droid_commands` (`_commandname`, `_chipname`, `_description`, spam text) | [ ] |
+| P11.4 | Squad rows + fighter mobiles: 3 ships per tier per track; **Freelancer has no ready `neutral` fighter set** (see risks) | [ ] |
+| P11.5 | `callWingmen` handler + `space_combat` spawn helper (spawn behind pilot, tag `commanderPlayer`, store squad id on the pilot) | [ ] |
+| P11.6 | Behaviour: `ship_ai.squadFollow` the player's ship; attack pilot's target (`getLookAtTarget` + `squadSetPrimaryTarget`); retaliate on `OnShipWasHit` | [ ] |
+| P11.7 | Lifecycle: despawn on resend, leave-space, hyperspace/zone, ship destroyed, logout, droid interface removed | [ ] |
+| P11.8 | Kill credit, cooldown, time cap; balance vs. the pilot | [ ] |
+| P11.9 | Deploy (shared tables go to the client too) + in-game smoke test per track and tier | [ ] |
 
-**Notes**
+**Notes / risks**
 
-- Verified existing pieces: `ship_ai.squadFollow` (native `spaceSquadFollow` accepts any object as the followed unit, not only AI ships), `squadSetAttackOrders`, `squadSetPrimaryTarget`, `unitAddDamageTaken`, `space_create.createSquadHyperspace`, `squads.tab` (`squad_plyr_cmd_*`), formations CLAW/WALL/SPHERE/DELTA/BROAD/X, `OnShipWasHit` on `combat_ship`.
-- Verified droid command path: client `/droid <name>` -> `combat_ship_player.droid()` -> `space_combat.performDroidCommands` -> row in `datatables/space_combat/droid_commands.tab` -> `space_utils.notifyObject(player, strMessageHandlerOnPlayer, row)` -> handler (e.g. `zoneToKessel`). Existing handler rows: `muteDroid`, `zoneToKessel`, `zoneToImperialDeepSpace`, `zoneToRebelDeepSpace`.
-- Existing summon pattern to copy for spawn/cleanup: `space_combat.setupStrikePackageEscort` and `space/command/player_cmd_tie_bomber_escort.java` (`OnDestroy` notifies `commanderPlayer`).
-- C++ caveat: `SpaceSquad::setGuardTarget` requires a target squad. Only revisit (C++, last resort) if follow + explicit targeting proves insufficient.
-- Not the same as P9 (ground pet-droid command module).
-- Unverified: client-side droid program UI/strings (P11.2); whether wingman kills credit the player (P11.8).
+- **Guard pattern differs for players.** The bomber-strike escorts use `squadSetGuardTarget`, which takes a **squad id**; a player's ship is not in a squad. Use follow + attack-my-target + retaliate instead.
+- **Freelancer fighters:** mobiles exist for `imperial` (321 rows) and `rebel` (209) but none with `space_faction = neutral`. Needs new mobile rows with a faction that is hostile to what the pilot fights.
+- **Shared tables:** `skills.tab` and `droid_program_size.tab` are under `sys.shared`; after DataTableTool the client needs the new `.iff` copies (see WORKFLOW.md staging section).
+- **Droid memory:** program size must fit the droid interface capacity; check how capacity scales per interface tier before fixing the sizes.
+- **Assumption to confirm:** re-sending the program replaces the existing wingmen (no stacking).
+- Not yet verified: the exact hooks for zoning/hyperspace and ship destruction (`OnHyperspaceToHomeLocation`, `OnSpaceEjectPlayerFromShip`, `OnLogout`, `OnImmediateLogout` exist in `combat_ship_player.java`).
+- Related: P9 (droid command module) touches the same program-chip path; confirm it is fixed before testing.
+- Verified natives (earlier pass): `ship_ai.squadFollow` accepts any object as the followed unit (not only AI ships), plus `squadSetAttackOrders`, `squadSetPrimaryTarget`, `space_create.createSquadHyperspace`, formations CLAW/WALL/SPHERE/DELTA/BROAD/X, `OnShipWasHit` on `combat_ship`.
+- C++ caveat: `SpaceSquad::setGuardTarget` requires a target squad. Revisit C++ only if follow + explicit targeting proves insufficient.
+- Supersedes the first P11 draft (single summon/dismiss command, 1-3 wingmen by interface rating): design is now one program per tier, 3 fighters each.
 
-**Exit criteria:** In space, the droid command spawns wingmen that follow and engage, they despawn cleanly in every lifecycle case above, and repeated use is limited by cooldown/cap.
-
----
+**Exit criteria:** Each track's tier 1-4 program spawns 3 matching-strength fighters that follow and engage, and they despawn cleanly in every lifecycle case above.
 
 ---
 
@@ -400,4 +414,5 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-08-16 | P6.9 soft-SQF: skill-mod Strength/Quickness/Focus cost approximation (no 9-stat engine). Branch `feature/precu-soft-sqf-ham`. Explicit REVERT steps in P6 notes. |
 | 2026-08-17 | Soft SQF retune+armor tax+food modified; grants: racial mods + profession novice strength/quickness/focus; added todo.md with PR links and deploy commands. |
 | 2026-09-29 | Added P10: AT-XT fire while driven (location-target command for ground marker + fire without auto-aim). dsrc branch `feature/at-xt-location-ground-target`. |
+| 2026-09-29 | Added P11: space wingmen as tiered droid programs (Freelancer/Alliance/Imperial), 3 escort fighters per tier. Feasibility done, no code yet. |
 | 2026-09-29 | Added P11: space wingmen feasibility (verified) + plan. Branch `feature/progress-p11-space-wingmen`. |
