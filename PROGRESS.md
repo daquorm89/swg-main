@@ -293,7 +293,8 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 | P10.2 | Convert `at_xt_vehicle_blaster` to a location command (`targetType=location`, LOCATION egg, `hoth_scout_cannon` pattern) | [~] (dsrc branch `feature/at-xt-location-ground-target`, commit `0535e3966`) |
 | P10.3 | Merge dsrc PR, bump `swg-main` dsrc pin, deploy (Java single-file + DataTableTool + iff copies + client files) | [ ] |
 | P10.4 | In-game smoke: marker appears while driving; fires with auto-aim OFF at ground and at a mob; splash hits mobs at marker; auto-aim ON still fires at locked target | [ ] |
-| P10.5 | Tune splash radius (`coneLength`), damage, `maxRange`/`maxRangeToTarget` after smoke test | [ ] |
+| P10.5 | Tune splash radius (`coneLength`), damage, `maxRange`/`maxRangeToTarget` after smoke test | [~] (radius 7.2, cooldownTime now 10.0s) |
+| P10.6 | Component-based AT-XT recipe: droid engineer (motive system x2, brain, sensor), architect (generator turbine, heavy weapon mount stabilizer), shipwright (fusion reactor mk1, medium blaster x2) + steel/iron | [~] (dsrc commit on same branch; needs TemplateCompiler + client shared IFF + in-game craft test) |
 
 **Notes**
 
