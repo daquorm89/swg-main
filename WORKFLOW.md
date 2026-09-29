@@ -141,6 +141,35 @@ cd dsrc && git fetch origin && git checkout master && git reset --hard origin/ma
 - Prefer small, testable PRs with in-game smoke tests listed in the PR body.
 - Update this `WORKFLOW.md` when introducing a new standing rule or completed phase.
 
+### 2.5 Checkpointing and resuming after an interruption (AI agents)
+
+The AI sandbox is **temporary**. If a session is interrupted, everything not pushed to GitHub is lost (this happened during P11: a full implementation was written locally, never pushed, and had to be rebuilt from a chat summary). Treat unpushed work as non-existent.
+
+**Checkpoint rules**
+
+1. **Push early, push often.** Commit and push a feature branch after each logical stage, not at the end. Typical stages: (a) datatable rows, (b) strings, (c) library/script code, (d) hooks in existing scripts, (e) PROGRESS.md update. Unfinished work is fine on a feature branch; label it `WIP:` in the commit message.
+2. **Submodules first.** Push the branch in each changed submodule (`dsrc`, `serverdata`, ...) before or together with the parent. Work that only exists in a submodule working tree is not saved until that submodule's branch is pushed.
+3. **Use the same branch name in every repo touched** (e.g. `feature/space-wingmen` in both `dsrc` and `serverdata`), so a later session can find all the pieces by name.
+4. **Record the checkpoint in `PROGRESS.md`.** For the active project, keep a short "Implementation status" note with: branch names per repo, latest commit SHAs, what is done, what is next, what is unverified. Update it at each checkpoint (this file is small, so push it on its own branch such as `feature/progress-<project>`).
+5. **Do not store tokens** in any file, commit message or PROGRESS.md.
+6. **Generated changes:** if a change was produced by a script (table rows, string files), commit the script too (e.g. under `tools/`), or describe exactly how to regenerate it, so a lost session can be replayed.
+
+**Resume procedure (start of every session)**
+
+1. Read `WORKFLOW.md` and `PROGRESS.md`; find the active project's "Implementation status" note.
+2. Check what actually exists on the remote, in the parent **and** each submodule. Do not trust chat summaries over the remote:
+
+```bash
+git ls-remote --heads https://github.com/daquorm89/swg-main.git
+git ls-remote --heads https://github.com/daquorm89/dsrc.git | grep -i <project-keyword>
+git ls-remote --heads https://github.com/daquorm89/serverdata.git | grep -i <project-keyword>
+```
+
+3. Clone, then `git submodule update --init <needed submodules>`. Per §2.2.1, submodules land on the parent's **pin**, which may be behind: `git fetch origin`, then check out the project's feature branch if it exists, otherwise `master`.
+4. Compare branch contents with the PROGRESS.md checklist (`git log master..origin/<branch> --oneline`, `git diff --stat master...origin/<branch>`). Mark anything claimed but missing as not done.
+5. Continue from the first unfinished item, checkpointing per the rules above.
+6. If a user-supplied summary file exists (e.g. `summary.txt`), use it to fill gaps, but verify each claim against the code.
+
 ---
 
 ## 3. Repository map
@@ -664,6 +693,7 @@ Only if `stationapi` sources changed — use that project’s narrow build (or `
 8. Forgetting **`git submodule update`** on the server after merge — **or** running it on a **feature branch** whose `dsrc` pin is stale/divergent (silently rolls `dsrc` off `master`; see §2.2.1).
 8b. Assuming `git submodule update` means “newest `dsrc`.” It only checks out the **parent branch’s recorded SHA**.
 8c. Rebasing `swg-main` feature branches onto `master` without intent; on conflict use `git rebase --abort` unless you meant to integrate that feature.  
+8d. Leaving work unpushed in the AI sandbox — an interrupted session loses it. Push a feature branch (parent **and** submodules) after each stage; see §2.5.  
 9. Inventing git author identities — always `daquorm89 <douweheuvel@gmail.com>`.  
 10. Large C++ changes without a rollback plan.  
 11. Editing `.cpp`/`.h` but only rebuilding Java — run `make … serverGame` and `SwgGameServer` in the CMake dir (`build/`), then restart GameServer.  
