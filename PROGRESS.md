@@ -281,6 +281,30 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 
 ---
 
+### P10 — AT-XT (craftable walker) fire while driven: mob targeting + ground marker
+
+**Goal:** A driver of the crafted AT-XT can (a) fire without the client auto-aim toggle and (b) get the heavy-weapon-style ground marker and hit the marked spot.
+
+**Primary paths:** `dsrc` -> `command_table.tab` (shared + server), `combat_data.tab`, `combat_actions.java` (`at_xt_vehicle_blaster`), `at_xt_combat.java`
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P10.1 | Investigate why fire failed without auto-aim and why the ground marker never showed | [x] |
+| P10.2 | Convert `at_xt_vehicle_blaster` to a location command (`targetType=location`, LOCATION egg, `hoth_scout_cannon` pattern) | [~] (dsrc branch `feature/at-xt-location-ground-target`, commit `0535e3966`) |
+| P10.3 | Merge dsrc PR, bump `swg-main` dsrc pin, deploy (Java single-file + DataTableTool + iff copies + client files) | [ ] |
+| P10.4 | In-game smoke: marker appears while driving; fires with auto-aim OFF at ground and at a mob; splash hits mobs at marker; auto-aim ON still fires at locked target | [ ] |
+| P10.5 | Tune splash radius (`coneLength`), damage, `maxRange`/`maxRangeToTarget` after smoke test | [ ] |
+
+**Notes**
+
+- Root cause (marker): client shows the ground reticle for an *overridden* default attack only if that command's `targetType == location` (`CreatureObject::getPrimaryActionWantsGroundReticule`). The AT-XT command was `required` (earlier attempts used `optional` + `validWeapon=GROUND_TARGETTING`, which is checked against the driver's *held* weapon, and none is equipped while driving).
+- Root cause (no fire without auto-aim): `required` makes the server drop the command (`CEC_TargetType`) when no target id is sent, and the client needs a mob under the cursor with auto-aim off.
+- Unverified suspicion: with auto-aim off the client may pick the AT-XT itself as the first object under the cursor (`findAllTargettableObjects`). If mob targeting still fails after P10.4, check that in client-tools before touching the server again.
+- Files needed on client after DataTableTool: `combat_data.iff`, `command_table.iff` (shared tables; see WORKFLOW.md staging section). Full client restart.
+- Revert: restore the three edited rows and Java method from `dsrc` master (`40f8dd73a`).
+
+---
+
 ## Completed projects
 
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
@@ -342,3 +366,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-08-15 | Added P8 (completed): client-tools Transceiver message-dispatch startup crash fix; linked client-tools repo + its own WORKFLOW.md from this file; deferred SwgGodClient |
 | 2026-08-16 | P6.9 soft-SQF: skill-mod Strength/Quickness/Focus cost approximation (no 9-stat engine). Branch `feature/precu-soft-sqf-ham`. Explicit REVERT steps in P6 notes. |
 | 2026-08-17 | Soft SQF retune+armor tax+food modified; grants: racial mods + profession novice strength/quickness/focus; added todo.md with PR links and deploy commands. |
+| 2026-09-29 | Added P10: AT-XT fire while driven (location-target command for ground marker + fire without auto-aim). dsrc branch `feature/at-xt-location-ground-target`. |
