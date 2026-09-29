@@ -304,6 +304,38 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 - Files needed on client after DataTableTool: `combat_data.iff`, `command_table.iff` (shared tables; see WORKFLOW.md staging section). Full client restart.
 - Revert: restore the three edited rows and Java method from `dsrc` master (`40f8dd73a`).
 
+### P11 — Space wingmen (AI escort ships summoned via a ship droid command)
+
+**Goal:** A pilot with a droid interface installed can call 1–3 AI wingmen in space that follow the player's ship, fight the player's target, and return fire when the player is hit. Temporary, capped, on cooldown, despawned cleanly. Java + datatables only (no C++ in Phase 1).
+
+**Feasibility verdict (2026-09-29, verified against `dsrc` master + `src`):** feasible. Grok's first pass was mostly right but wrong on one key point: `ship_ai.squadSetGuardTarget` needs a *squad id* as target and player ships are not in a `SpaceSquad`, so the bomber-strike "follow + guard" pattern cannot be copied 1:1. Use follow + explicit targeting instead.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P11.1 | Feasibility research (natives, droid command path, squads, hit callbacks) | [x] |
+| P11.2 | Find how droid program chips are made (datapad item with `strDroidCommand` objvar) and how the client lists/learns them; check client-tools for any client-side program table or strings needed | [ ] |
+| P11.3 | Add `droid_commands.tab` rows (`droidcommand_callwingmen`, `..._dismisswingmen`, optional `..._wingmenattack`) with `strMessageHandlerOnPlayer` handlers; cooldown via `fltBaseDelay` | [ ] |
+| P11.4 | New `library/space_wingmen.java`: spawn via `space_create.createSquadHyperspace`, tag members `commanderPlayer`, store squad id on the player ship, `squadFollow(squad, playerShip, dir, dist)`, `squadSetAttackOrders(RETURN_FIRE)` | [ ] |
+| P11.5 | Combat behaviour: "attack my target" = `getLookAtTarget(ship)` then `squadSetPrimaryTarget`; defend = hook `OnShipWasHit` on the player ship and set the attacker as the squad's primary target | [ ] |
+| P11.6 | New `squads.tab` rows + faction-appropriate fighter templates (existing `escort_tie_*` squads are Imperial-only); cap count by droid interface rating | [ ] |
+| P11.7 | Lifecycle cleanup: ship destroyed, pilot leaves ship, zone/hyperspace, logout, droid interface removed/disabled, TTL timer; never leave orphan squads | [ ] |
+| P11.8 | Decide + implement kill credit/XP/loot ownership and friendly-fire rules for wingman kills | [ ] |
+| P11.9 | Balance pass (count, durability, damage, cooldown, TTL) so it assists rather than replaces the pilot | [ ] |
+| P11.10 | Deploy + in-game smoke test | [ ] |
+
+**Notes**
+
+- Verified existing pieces: `ship_ai.squadFollow` (native `spaceSquadFollow` accepts any object as the followed unit, not only AI ships), `squadSetAttackOrders`, `squadSetPrimaryTarget`, `unitAddDamageTaken`, `space_create.createSquadHyperspace`, `squads.tab` (`squad_plyr_cmd_*`), formations CLAW/WALL/SPHERE/DELTA/BROAD/X, `OnShipWasHit` on `combat_ship`.
+- Verified droid command path: client `/droid <name>` -> `combat_ship_player.droid()` -> `space_combat.performDroidCommands` -> row in `datatables/space_combat/droid_commands.tab` -> `space_utils.notifyObject(player, strMessageHandlerOnPlayer, row)` -> handler (e.g. `zoneToKessel`). Existing handler rows: `muteDroid`, `zoneToKessel`, `zoneToImperialDeepSpace`, `zoneToRebelDeepSpace`.
+- Existing summon pattern to copy for spawn/cleanup: `space_combat.setupStrikePackageEscort` and `space/command/player_cmd_tie_bomber_escort.java` (`OnDestroy` notifies `commanderPlayer`).
+- C++ caveat: `SpaceSquad::setGuardTarget` requires a target squad. Only revisit (C++, last resort) if follow + explicit targeting proves insufficient.
+- Not the same as P9 (ground pet-droid command module).
+- Unverified: client-side droid program UI/strings (P11.2); whether wingman kills credit the player (P11.8).
+
+**Exit criteria:** In space, the droid command spawns wingmen that follow and engage, they despawn cleanly in every lifecycle case above, and repeated use is limited by cooldown/cap.
+
+---
+
 ---
 
 ## Completed projects
@@ -368,3 +400,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-08-16 | P6.9 soft-SQF: skill-mod Strength/Quickness/Focus cost approximation (no 9-stat engine). Branch `feature/precu-soft-sqf-ham`. Explicit REVERT steps in P6 notes. |
 | 2026-08-17 | Soft SQF retune+armor tax+food modified; grants: racial mods + profession novice strength/quickness/focus; added todo.md with PR links and deploy commands. |
 | 2026-09-29 | Added P10: AT-XT fire while driven (location-target command for ground marker + fire without auto-aim). dsrc branch `feature/at-xt-location-ground-target`. |
+| 2026-09-29 | Added P11: space wingmen feasibility (verified) + plan. Branch `feature/progress-p11-space-wingmen`. |
