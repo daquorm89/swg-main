@@ -326,13 +326,13 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 | ID | Sub-target | Status |
 |----|------------|--------|
 | P11.1 | Feasibility check against dsrc/src | [x] |
-| P11.2 | Programs: rows in `droid_commands.tab` + `droid_program_size.tab` (4 tiers, per-track names or one shared name per tier) + `COMMANDS` grants in `skills.tab` (12 boxes) | [ ] |
-| P11.3 | Strings in `space/droid_commands` (`_commandname`, `_chipname`, `_description`, spam text) | [ ] |
-| P11.4 | Squad rows + fighter mobiles: 3 ships per tier per track; **Freelancer has no ready `neutral` fighter set** (see risks) | [ ] |
-| P11.5 | `callWingmen` handler + `space_combat` spawn helper (spawn behind pilot, tag `commanderPlayer`, store squad id on the pilot) | [ ] |
-| P11.6 | Behaviour: `ship_ai.squadFollow` the player's ship; attack pilot's target (`getLookAtTarget` + `squadSetPrimaryTarget`); retaliate on `OnShipWasHit` | [ ] |
-| P11.7 | Lifecycle: despawn on resend, leave-space, hyperspace/zone, ship destroyed, logout, droid interface removed | [ ] |
-| P11.8 | Kill credit, cooldown, time cap; balance vs. the pilot | [ ] |
+| P11.2 | Programs: rows in `droid_commands.tab` + `droid_program_size.tab` (4 tiers, per-track names or one shared name per tier) + `COMMANDS` grants in `skills.tab` (12 boxes) | [x] |
+| P11.3 | Strings in `space/droid_commands` (`_commandname`, `_chipname`, `_description`, spam text) | [~] server `.stf` done; **client** copy still needed |
+| P11.4 | Squad rows + fighter mobiles: 3 ships per tier per track; **Freelancer has no ready `neutral` fighter set** (see risks) | [x] |
+| P11.5 | `callWingmen` handler + `space_combat` spawn helper (spawn behind pilot, tag `commanderPlayer`, store squad id on the pilot) | [x] |
+| P11.6 | Behaviour: `ship_ai.squadFollow` the player's ship; attack pilot's target (`getLookAtTarget` + `squadSetPrimaryTarget`); retaliate on `OnShipWasHit` | [x] |
+| P11.7 | Lifecycle: despawn on resend, leave-space, hyperspace/zone, ship destroyed, logout, droid interface removed | [~] see notes |
+| P11.8 | Kill credit, cooldown, time cap; balance vs. the pilot | [~] 20 s cooldown + `commanderPlayer` tag only |
 | P11.9 | Deploy (shared tables go to the client too) + in-game smoke test per track and tier | [ ] |
 
 **Notes / risks**
@@ -347,6 +347,23 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 - Verified natives (earlier pass): `ship_ai.squadFollow` accepts any object as the followed unit (not only AI ships), plus `squadSetAttackOrders`, `squadSetPrimaryTarget`, `space_create.createSquadHyperspace`, formations CLAW/WALL/SPHERE/DELTA/BROAD/X, `OnShipWasHit` on `combat_ship`.
 - C++ caveat: `SpaceSquad::setGuardTarget` requires a target squad. Revisit C++ only if follow + explicit targeting proves insufficient.
 - Supersedes the first P11 draft (single summon/dismiss command, 1-3 wingmen by interface rating): design is now one program per tier, 3 fighters each.
+
+**Implementation status (2026-09-29) - code complete, compiles, NOT yet deployed or smoke-tested**
+
+- dsrc branch `feature/space-wingmen` (commit `b7429d2c0`): tables, `script/library/space_wingmen.java`, `script/space/command/player_cmd_wingman.java`, hooks in `combat_ship_player.java` and `combat_ship.java`. All four Java files compile against the dsrc source tree (javac, syntax and symbols only; no in-game run).
+- serverdata branch `feature/space-wingmen` (commit `dce7a9a46`): `string/en/space/droid_commands.stf` (droidcommand_wingmenone..four + `_chipname`/`_commandname`/`_description`, spam keys `wingmen_one..four`).
+- Programs `droidcommand_wingmenone..four` (memory 10/15/20/25). Skill grants on `pilot_neutral_droid_01..04`, `pilot_rebel_navy_droid_01..04`, `pilot_imperial_navy_droid_01..04`.
+- Fighters: Imperial TIE fighter / interceptor / advanced / advanced; Alliance Z-95 / A-wing / X-wing / X-wing; Freelancer Scyk / Dunelizard / Ixiyen / Rihkxyrk hulls (`hutt_light_s01`, `hutt_medium_s01`, `blacksun_medium_s01`, `blacksun_heavy_s01`), 3 of the same per tier. Rows `wingman_<track>_tier1..4`, squads `squad_plyr_wingmen_<track>_<tier>`. No XP, no loot, friendly faction (`imperial`, `rebel`, `mercenary`), taunts off.
+- Behaviour: follow the pilot's ship, engage the pilot's look-at target (3 s tick), retarget onto whoever hits the pilot's ship (5 s throttle). Re-send replaces the set (20 s cooldown between calls).
+- Despawn: all 3 dead, resend, `OnLogout`, `OnHyperspaceToHomeLocation`, `OnSpaceEjectPlayerFromShip`, player ship destroyed (`killSpacePlayer`). Each wingman also self-destructs within about 10 s if its commander or the commander's ship is no longer in the scene (covers zoning/hyperspace to another system). **Not handled:** droid interface removed while wingmen are out.
+
+**Still open (before P11.9 smoke test)**
+
+- Client needs the new `space/droid_commands.stf` and the new `skills.iff` / `droid_program_size.iff` (shared tables). Chip name and skill-box command list come from these.
+- Freelancer ships are built from existing pirate/Black Sun hull rows; confirm the wingman rows actually spawn friendly and do not get attacked by, or attack, the pilot.
+- Droid memory: sizes 10/15/20/25 not yet checked against droid interface capacity.
+- Kill credit relies on the existing `commanderPlayer` objvar path in `space_combat.registerDamageDoneToShip`; verify in game. No wingman time cap yet.
+- Deploy order: merge `dsrc` and `serverdata` PRs first, then a parent PR bumping both gitlinks (WORKFLOW 2.2.1).
 
 **Exit criteria:** Each track's tier 1-4 program spawns 3 matching-strength fighters that follow and engage, and they despawn cleanly in every lifecycle case above.
 
@@ -416,3 +433,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-09-29 | Added P10: AT-XT fire while driven (location-target command for ground marker + fire without auto-aim). dsrc branch `feature/at-xt-location-ground-target`. |
 | 2026-09-29 | Added P11: space wingmen as tiered droid programs (Freelancer/Alliance/Imperial), 3 escort fighters per tier. Feasibility done, no code yet. |
 | 2026-09-29 | Added P11: space wingmen feasibility (verified) + plan. Branch `feature/progress-p11-space-wingmen`. |
+| 2026-09-29 | P11 implemented (code only): dsrc + serverdata branches `feature/space-wingmen`; P11.2-P11.7 done or partial, P11.8-P11.9 open. Earlier local work had never been pushed and was rebuilt. |
