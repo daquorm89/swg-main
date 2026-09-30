@@ -170,6 +170,17 @@ git ls-remote --heads https://github.com/daquorm89/serverdata.git | grep -i <pro
 5. Continue from the first unfinished item, checkpointing per the rules above.
 6. If a user-supplied summary file exists (e.g. `summary.txt`), use it to fill gaps, but verify each claim against the code.
 
+### 2.6 Commands the AI hands to the user
+
+Command blocks given to the user must run top to bottom as one uninterrupted stack that can be pasted in a single go.
+
+1. **No `git log` lines** in these blocks. `git log` (and `git show`, `git diff`, `git branch -a`) opens a pager that waits for `q` and stalls every command after it. Do not add "check that the right commit is checked out" lines as part of the stack. If the user asks for a check, give it as a separate block using `git --no-pager ...`.
+2. **No other interactive commands:** no editors, no `less`/`more`, no `git commit` without `-m`, no `git add -p`, no plain `git pull` that can open a merge editor (use `git pull --ff-only`).
+3. **No comments that need action** inside the block; put explanations in the text before or after it.
+4. Keep blocks per machine (server / client) and per step, in the order they must run.
+
+This rule is about commands the AI gives the user. Commands the AI runs itself in its sandbox are not affected.
+
 ---
 
 ## 3. Repository map
