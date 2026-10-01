@@ -366,7 +366,38 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 - Kill credit relies on the existing `commanderPlayer` objvar path in `space_combat.registerDamageDoneToShip`; verify in game. No wingman time cap yet.
 - Deploy order: merge `dsrc` and `serverdata` PRs first, then a parent PR bumping both gitlinks (WORKFLOW 2.2.1).
 
+**Friendly-fire fix (2026-10-01, code complete, NOT merged, NOT tested in game):** dsrc branch `feature/wingmen-friendly-fire` (commit `a79f20566`). Cause: `combat_ship.OnShipWasHit` applied damage and called `ship_ai.unitAddDamageTaken(self, attacker, ...)`, so hitting a wingman put the pilot's ship on its hate list. Fix: at the top of `OnShipWasHit`, a wingman ignores hits from the pilot's ship, group members' ships and sibling wingmen (no damage, never reaches the AI); `space_wingmen` tick also removes the pilot's ship from each wingman's target list every 3 s as a safety net. Files: `combat_ship.java`, `space_wingmen.java`. Deploy: `./utils/build_java_single.sh` on each, restart GameServer. Smoke: shoot a wingman, kill the enemy, confirm they stay friendly; if they still turn, another C++ path is involved (splash/turrets).
+
 **Exit criteria:** Each track's tier 1-4 program spawns 3 matching-strength fighters that follow and engage, and they despawn cleanly in every lifecycle case above.
+
+---
+
+### P12 — Atmospheric flight: fly up into space (+ Mustafar via Nova Orion)
+
+**Goal:** A pilot flying a fighter in the atmosphere of a ground planet who climbs past the planet's `spaceTransitionAltitude` (3000 m above terrain) is launched into that planet's space scene, the same way a starport launch works. Mustafar becomes flyable and exits to `space_nova_orion` (no `space_mustafar` scene exists anywhere in the repo).
+
+**Primary paths (under `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/`):** `datatables/space/atmospheric_flight_planets.tab`, `script/library/space_utils.java`, `script/library/space_transition.java`, `script/space/combat/combat_ship_player.java`. Java + one datatable only, no C++.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P12.1 | Investigate: `spaceTransitionAltitude` column and `space_utils.getAtmosphericSpaceTransitionAltitude()` already existed, nothing called them | [x] |
+| P12.2 | New optional `launchPoint` column in `atmospheric_flight_planets.tab` (a `region` key of `launch_locations.tab`); `space_utils.getAtmosphericLaunchRow(planet)` resolves it, else first `launch_locations` row with matching `groundScene` | [x] (code) |
+| P12.3 | Mustafar row: `allowAtmosphericFlight=1`, altitude 3000, `launchPoint=nova_orion_station` | [x] (code) |
+| P12.4 | Altitude watch: 1 s repeating `handleAtmosAltitudeCheck` on the pilot, warning at 80%, trigger at 100%; started from `completeBoardShipAfterClientRefresh` (wrapper over `...Impl`) and the POB branch of `boardShipAsPilotOnGround`; generation counter drops stale loops; tolerates 5 missed checks during the client world refresh | [x] (code) |
+| P12.5 | Exit: `space_transition.exitAtmosphereToSpace` validates owner, control device, target zone population, then `restoreShipToControlDevice` + `launch(...)` with gunners as passengers; on pack failure the pilot is re-seated and the check is blocked for 30 s | [x] (code) |
+| P12.6 | Merge dsrc PR, bump `swg-main` dsrc pin, build Java, DataTableTool for `atmospheric_flight_planets.tab`, copy `.iff` everywhere, restart | [ ] |
+| P12.7 | In-game smoke: climb on Tatooine/Naboo/Corellia/Rori/Talus -> warning at 2400 m, space at 3000 m; gunner comes along; flying down again after landing; Mustafar -> Nova Orion; owner-only; pack-failure recovery | [ ] |
+| P12.8 | Interior (POB) ships: currently only a message ("cannot leave the atmosphere yet"). Packing a POB on the ground has a known portal crash, so left out of v1 | [ ] deferred |
+
+**Implementation status (2026-10-01) - code complete, compiles with javac, NOT deployed or tested**
+
+- dsrc branch `feature/atmos-exit-to-space` (latest `bb8e1c5ed`): the four files above. The previous session's local version was never pushed and was rebuilt from the summary and the code.
+- Arrival in space reuses the existing launch path (`setLaunchInfo` -> `warpPlayer` -> `handlePotentialSceneChange` / `unpackShipForPlayer`); the ground location stored for the return trip is the point under the ship when it left.
+- Deploy: `./utils/build_java_single.sh` for `space_utils.java`, `space_transition.java`, `combat_ship_player.java`; then `cd ~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/datatables/space/ && ~/repos/swg-main/build/bin/DataTableTool -i atmospheric_flight_planets.tab`, take `SRC` from the SUCCESS line and `find ~/repos/swg-main -name 'atmospheric_flight_planets.iff' ! -path "$SRC" -exec cp -f "$SRC" {} \;` (WORKFLOW 6.3). Server-only table, no client copy. Restart GameServer.
+- Unverified: whether a ship at 3000 m is still piloted correctly by the existing flight code (no altitude cap was found, but not tested); whether Mustafar's existing ground content copes with ships (Call Ship, landing); the player's arrival start index for gunners.
+- Revert: restore the table and the three Java files from dsrc `master`; nothing else depends on them.
+
+**Exit criteria:** P12.6-P12.7 verified in game; P12.8 done or consciously deferred.
 
 ---
 
@@ -435,3 +466,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-09-29 | Added P11: space wingmen as tiered droid programs (Freelancer/Alliance/Imperial), 3 escort fighters per tier. Feasibility done, no code yet. |
 | 2026-09-29 | Added P11: space wingmen feasibility (verified) + plan. Branch `feature/progress-p11-space-wingmen`. |
 | 2026-09-29 | P11 implemented (code only): dsrc + serverdata branches `feature/space-wingmen`; P11.2-P11.7 done or partial, P11.8-P11.9 open. Earlier local work had never been pushed and was rebuilt. |
+| 2026-10-01 | P11: wingmen friendly-fire fix on dsrc `feature/wingmen-friendly-fire`. Added P12: atmospheric fly-up-to-space exit + Mustafar -> Nova Orion, dsrc `feature/atmos-exit-to-space` (code only). |
