@@ -399,6 +399,13 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 - Unverified: whether a ship at 3000 m is still piloted correctly by the existing flight code (no altitude cap was found, but not tested); whether Mustafar's existing ground content copes with ships (Call Ship, landing); the player's arrival start index for gunners.
 - Revert: restore the table and the three Java files from dsrc `master`; nothing else depends on them.
 
+**Follow-up (2026-10-04) - dsrc `feature/atmos-exit-watch-and-station-fix`, code only, NOT compiled/tested**
+
+- Server log error `JavaLibrary::getNamedObject: no such object named 'questManager'` from `space_combat.getClosestSpaceStation` <- `space_transition.unpackShipForPlayer` <- `ship_control_device.OnObjectMenuSelect` (Call Ship on a ground planet). Cause: `liveSpaceServer=1` in `exe/linux/localOptions.cfg` removes the try/catch, and the quest manager exists only in space scenes; a stale `strLaunchPointName` script var made the ground call run. Fixed: scene check + always catch + null-check + clear stale var.
+- Fly-up not triggering, likely cause: the altitude watch was started only from `completeBoardShipAfterClientRefresh` and the POB branch of `boardShipAsPilotOnGround`, not from Call Ship / `unpackShipForPlayer` seats or relogin. Now started from those too. Throttled `atmosAlt:` log line (every 10 s, `LOG space_transition`) shows altitude vs limit.
+- Still to verify in game: that the `atmosAlt:` line appears while flying; if altitude never reaches 3000 m, check for a client-side height cap (client-tools).
+- Also: `ShipComponentDataManager ... hutt_heavy_s02_chassis_token.iff is not a component` warnings are a separate data issue (chassis token listed in a component table), not related to this fix.
+
 **Exit criteria:** P12.6-P12.7 verified in game; P12.8 done or consciously deferred.
 
 ---
@@ -471,3 +478,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-01 | P11: wingmen friendly-fire fix on dsrc `feature/wingmen-friendly-fire`. Added P12: atmospheric fly-up-to-space exit + Mustafar -> Nova Orion, dsrc `feature/atmos-exit-to-space` (code only). |
 | 2026-10-02 | P9.9: multi-droid formation slots (droids stacked on one spot). dsrc `feature/droid-formation-slots` (code only, uncompiled/untested). |
 | 2026-10-02 | P9.10: droid slot cap 5 -> 24 (1:1 rating), guard assist + droid slash commands reach every droid. dsrc `feature/multi-droid-slots-and-guard` (compiles, untested in game). Earlier unpushed attempt was lost and redone. |
+| 2026-10-04 | P12 follow-up: fix questManager exception on ground Call Ship; start altitude watch on all pilot-seat paths. dsrc `feature/atmos-exit-watch-and-station-fix` (code only). |
