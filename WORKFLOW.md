@@ -75,7 +75,7 @@ Restore **Pre-CU skill-based professions and combat presentation** on top of an 
 | **Divergent feature pins are dangerous** | Example: `dsrc` commit `ba2ef990` lives on `feature/atmospheric-flight` and is **not** an ancestor of `dsrc` `master`. Updating the submodule to it **drops** every master-only change (AT-XT, multi-droid command module fixes, etc.) from the working tree. Nothing was deleted on GitHub — the local tree simply switched lineage. |
 | **Never “fix” parent divergence by rebasing a feature onto master blindly** | If `git pull --rebase origin master` while on a feature branch conflicts (e.g. `WORKFLOW.md`), run `git rebase --abort` unless you intentionally meant to rebase that feature. For day-to-day content, switch to `master` instead. |
 | **After merging a `dsrc` PR, bump the parent pin** | Merge on `daquorm89/dsrc` first, then open a small `swg-main` PR that only updates the `dsrc` gitlink to the new `master` SHA. Until that lands, `submodule update` on `swg-main` `master` will keep an **old** `dsrc`. |
-| **Verify after every submodule move** | `cd dsrc && git log -1 --oneline` and confirm expected files (e.g. `walker_at_xt.tpf`, `multi_droid_command_module.tpf`). |
+| **Verify after every submodule move** | `cd dsrc && git --no-pager log -1 --oneline` and confirm expected files (e.g. `walker_at_xt.tpf`, `multi_droid_command_module.tpf`). |
 
 **Safe update when you want current game content (`dsrc` master):**
 
@@ -87,7 +87,7 @@ cd dsrc
 git fetch origin
 git checkout master
 git reset --hard origin/master
-git log -1 --oneline   # must match daquorm89/dsrc master tip
+git --no-pager log -1 --oneline   # must match daquorm89/dsrc master tip
 cd ..
 # Optional: if parent master pin is still behind, either merge a bump PR or temporarily
 # leave dsrc on origin/master for builds (do not commit the pin from a dirty feature branch).
@@ -140,6 +140,7 @@ cd dsrc && git fetch origin && git checkout master && git reset --hard origin/ma
 - Search existing code/data before adding helpers.
 - Prefer small, testable PRs with in-game smoke tests listed in the PR body.
 - Update this `WORKFLOW.md` when introducing a new standing rule or completed phase.
+- **Commands handed to the user must never open a pager or prompt.** Always write `git --no-pager log ...`, `git --no-pager diff ...`, `git --no-pager show ...` (or avoid them), never bare `git log` / `git diff` / `git show`, and never commands that open an editor (`git commit` without `-m`, `git rebase -i`, `git merge` without `--no-edit`). Command blocks must be copy-paste runnable top to bottom without interaction. Prefer not to include verification-only lines at all unless the user asks.
 
 ### 2.5 Checkpointing and resuming after an interruption (AI agents)
 
@@ -166,7 +167,7 @@ git ls-remote --heads https://github.com/daquorm89/serverdata.git | grep -i <pro
 ```
 
 3. Clone, then `git submodule update --init <needed submodules>`. Per §2.2.1, submodules land on the parent's **pin**, which may be behind: `git fetch origin`, then check out the project's feature branch if it exists, otherwise `master`.
-4. Compare branch contents with the PROGRESS.md checklist (`git log master..origin/<branch> --oneline`, `git diff --stat master...origin/<branch>`). Mark anything claimed but missing as not done.
+4. Compare branch contents with the PROGRESS.md checklist (`git --no-pager log master..origin/<branch> --oneline`, `git --no-pager diff --stat master...origin/<branch>`). Mark anything claimed but missing as not done.
 5. Continue from the first unfinished item, checkpointing per the rules above.
 6. If a user-supplied summary file exists (e.g. `summary.txt`), use it to fill gaps, but verify each claim against the code.
 
