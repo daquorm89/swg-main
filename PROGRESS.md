@@ -414,6 +414,7 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 **Exit criteria:** P12.6-P12.7 verified in game; P12.8 done or consciously deferred.
 
 ---
+- **P12.11 Space mouse flight: zero center deadzone (client-tools `feature/space-mouse-zero-deadzone`, not built or tested in game):** the ship mouse (virtual joystick) in `PlayerShipController.cpp` forced a center deadzone of at least 17.5% of the half reticle radius (about 60 px at the default 700 px space reticle) plus a fixed 4 px `deadZone`. The Options menu could not change it: the space reticle size is set by an optional `sliderDeadZoneSpace` slider that the options UI does not define (so it stays at the 700 default), and the ground slider only changes the ground reticle. Now the center deadzone defaults to 0; the reticle size only sets how far the cursor must travel for full deflection. Optional overrides in `[ClientGame/PlayerShipController]` of the client config: `deadZone` (pixels) and `deadZoneRatio` (fraction of the reticle half-size). Needs a `SwgClient` rebuild and a new `SwgClient_r.exe` (client-tools WORKFLOW §3). Open: a real Options slider for the ship mouse deadzone needs a UI layout change; not done.
 
 ## Completed projects
 
@@ -487,3 +488,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-04 | P12.9/P12.10: Ship Travel radial (starport picker) and 5 m hover parking on exit. dsrc `feature/atmos-ship-travel-and-park` (compiles, untested). |
 | 2026-10-05 | Skill trainer no longer lists already-learned skills in the learn list (dsrc `feature/trainer-hide-learned-skills`, compiles, untested). Ship radial diagnostics added (P12.9c). |
 | 2026-10-05 | P12.9d: Ship Travel opens the real starship terminal window (free) instead of the ticket window. dsrc `feature/atmos-ship-travel-and-park` (compiles, untested). |
+| 2026-10-06 | P12.11: space mouse flight now has a zero center deadzone (client-tools `feature/space-mouse-zero-deadzone`, untested). |
