@@ -420,22 +420,22 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 
 **Goal:** Level 70+ NGE creatures (Mustafar) can be tamed and called by a Creature Handler holding the full taming line, without a Pre-CU skill-tree or client change.
 
-**Primary paths (under `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/`):** `library/pet_lib.java` only (Java, no tables, no client files).
+**Primary path:** `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/library/pet_lib.java` only (Java, no tables, no client files).
 
 | ID | Sub-target | Status |
 |----|------------|--------|
-| P13.1 | Root cause: the four Creature Handler lines (taming/training/healing/support) plus novice+master grant `tame_level` 70 total; `getChanceToTame` returns 0 when the creature's **table** level (`create.calcCreatureLevel`, not the spawn-overridden level shown in game) is above it, so `ai.java` never adds `PET_TAME`. Calling pets uses the same gate (`canControlPetsOfLevel`). Of 91 non-elite tameable `som_` rows, 19 are <=70 and 72 are >70. Baby spawn itself works. | [x] |
-| P13.2 | `pet_lib.getEffectiveTameLevel(level)` caps the level used for taming/calling at `MAX_TAME_LEVEL_CAP` = 70, applied in `getChanceToTame(int,int,int)` and the `canControlPetsOfLevel` sum. dsrc `feature/tame-cap-high-level-creatures` (compiles with javac 21; chance arithmetic checked offline) | [~] code only |
-| P13.3 | Merge dsrc PR, bump `swg-main` dsrc pin, build `pet_lib.java`, restart GameServer | [ ] |
+| P13.1 | Root cause: the four Creature Handler lines (taming/training/healing/support) plus novice+master grant `tame_level` 70 total; `getChanceToTame` returns 0 when the creature's **table** level (`~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/library/create.java` `calcCreatureLevel`, not the spawn-overridden level shown in game) is above it, so `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/ai/ai.java` never adds `PET_TAME`. Calling pets uses the same gate (`canControlPetsOfLevel`). Of 91 non-elite tameable `som_` rows, 19 are <=70 and 72 are >70. Baby spawn itself works. | [x] |
+| P13.2 | `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/library/pet_lib.java` `getEffectiveTameLevel(level)` caps the level used for taming/calling at `MAX_TAME_LEVEL_CAP` = 70, applied in `getChanceToTame(int,int,int)` and the `canControlPetsOfLevel` sum. dsrc `feature/tame-cap-high-level-creatures` (compiles with javac 21; chance arithmetic checked offline) | [~] code only |
+| P13.3 | Merge dsrc PR, bump `swg-main` dsrc pin, build `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/library/pet_lib.java`, restart GameServer | [ ] |
 | P13.4 | In-game smoke: full-line Creature Handler sees Tame on a >70 non-aggro Mustafar baby; handler with tame_level < 70 does not; sub-70 creatures unchanged; pet can be called | [ ] |
 
 **Notes**
 
-- Behavior: above-70 creatures behave as level 70, so they need the full line (tame_level 70). Non-aggro chance at skill 80 is 23% (level 70+). Aggro creatures at that level show chance 5, below the `ai.java` menu threshold of 15, so aggro >~53 stay untameable (aggro skill 50, +10 wookiee/ithorian, + `tame_bonus` gear/food). Lower that threshold separately if wanted.
+- Behavior: above-70 creatures behave as level 70, so they need the full line (tame_level 70). Non-aggro chance at skill 80 is 23% (level 70+). Aggro creatures at that level show chance 5, below the `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/ai/ai.java` menu threshold of 15, so aggro >~53 stay untameable (aggro skill 50, +10 wookiee/ithorian, + `tame_bonus` gear/food). Lower that threshold separately if wanted.
 - Superseded: dsrc `feature/tame-scale-high-level-creatures` (level compression, built on a wrong 34 cap) must not be merged; delete it.
-- Not changed: `pet_control_device.java` transfer check (~line 1939) still compares the raw level; the level shown in game can differ from the table level (spawn override), which is why some creatures displaying 80 are already tameable.
-- Deploy: `./utils/build_java_single.sh dsrc/sku.0/sys.server/compiled/game/script/library/pet_lib.java`, restart GameServer. No client files.
-- Revert: restore `pet_lib.java` from dsrc `master`.
+- Not changed: `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/ai/pet_control_device.java` transfer check (~line 1939) still compares the raw level; the level shown in game can differ from the table level (spawn override), which is why some creatures displaying 80 are already tameable.
+- Deploy: `cd ~/repos/swg-main && ./utils/build_java_single.sh dsrc/sku.0/sys.server/compiled/game/script/library/pet_lib.java`, restart GameServer. No client files.
+- Revert: restore `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/library/pet_lib.java` from dsrc `master`, rebuild it, restart GameServer.
 
 **Exit criteria:** P13.3-P13.4 verified in game.
 
