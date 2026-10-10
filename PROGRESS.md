@@ -431,7 +431,7 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 
 **Notes**
 
-- Effect: Mustafar creatures need effective tame level ~32-33, i.e. nearly the full Creature Handler line (tame_level 36 at max). Non-aggro chance at full line is about 24-25%, aggro higher. Tune `TAME_LEVEL_SCALE_DIVISOR` / `TAME_LEVEL_SCALE_START` in `pet_lib.java` if too easy/hard.
+- Effect: Mustafar creatures need effective tame level ~32-33, i.e. nearly the full Creature Handler line (base tame_level 34 at max). Non-aggro chance at full line is about 24-25%, aggro higher. Tune `TAME_LEVEL_SCALE_DIVISOR` / `TAME_LEVEL_SCALE_START` in `pet_lib.java` if too easy/hard.
 - Not changed: `pet_control_device.java` transfer check (~line 1939) still compares the raw level; harmless, revisit if transfer of high-level pets behaves oddly.
 - Deploy: `./utils/build_java_single.sh dsrc/sku.0/sys.server/compiled/game/script/library/pet_lib.java`, restart GameServer. No client files.
 - Revert: restore `pet_lib.java` from dsrc `master`.
