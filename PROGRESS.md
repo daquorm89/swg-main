@@ -416,6 +416,31 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 ---
 - **P12.11 Space mouse flight: zero center deadzone (client-tools `feature/space-mouse-zero-deadzone`, not built or tested in game):** the ship mouse (virtual joystick) in `PlayerShipController.cpp` forced a center deadzone of at least 17.5% of the half reticle radius (about 60 px at the default 700 px space reticle) plus a fixed 4 px `deadZone`. The Options menu could not change it: the space reticle size is set by an optional `sliderDeadZoneSpace` slider that the options UI does not define (so it stays at the 700 default), and the ground slider only changes the ground reticle. Now the center deadzone defaults to 0; the reticle size only sets how far the cursor must travel for full deflection. Optional overrides in `[ClientGame/PlayerShipController]` of the client config: `deadZone` (pixels) and `deadZoneRatio` (fraction of the reticle half-size). Needs a `SwgClient` rebuild and a new `SwgClient_r.exe` (client-tools WORKFLOW §3). Open: a real Options slider for the ship mouse deadzone needs a UI layout change; not done.
 
+### P13 — Taming high-level creatures (Mustafar babies had no Tame option)
+
+**Goal:** Level 70+ NGE creatures (Mustafar) can be tamed and called by a Creature Handler, without a Pre-CU skill-tree or client change.
+
+**Primary paths (under `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/`):** `library/pet_lib.java` only (Java, no tables, no client files).
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P13.1 | Root cause: Creature Handler line grants `tame_level` max 34 (12+10+2+2+3+5); Mustafar normals are level 72-83, elites 80-89. `getChanceToTame` returns 0 when level > tame level, so `ai.java` `OnObjectMenuRequest` never adds `PET_TAME`. Calling pets uses the same gate (`canControlPetsOfLevel`). Baby spawn itself works (`create.maybeMakeBaby` + `canTame`). | [x] |
+| P13.2 | `pet_lib.getEffectiveTameLevel(level)`: levels above 30 are compressed (`30 + (level-30)/15`: 72 -> 32, 89 -> 33). Applied once in `getChanceToTame(int,int,int)` and in the `canControlPetsOfLevel` level sum. dsrc `feature/tame-scale-high-level-creatures` (`156e592d9`, compiles with javac 21) | [~] code only |
+| P13.3 | Merge dsrc PR, bump `swg-main` dsrc pin, build `pet_lib.java`, restart GameServer | [ ] |
+| P13.4 | In-game smoke: Creature Handler near full taming line sees Tame on a Mustafar baby; taming succeeds; pet can be called; low-skill handler still sees no option; sub-30 creatures unchanged | [ ] |
+
+**Notes**
+
+- Effect: Mustafar creatures need effective tame level ~32-33, i.e. nearly the full Creature Handler line (tame_level 36 at max). Non-aggro chance at full line is about 24-25%, aggro higher. Tune `TAME_LEVEL_SCALE_DIVISOR` / `TAME_LEVEL_SCALE_START` in `pet_lib.java` if too easy/hard.
+- Not changed: `pet_control_device.java` transfer check (~line 1939) still compares the raw level; harmless, revisit if transfer of high-level pets behaves oddly.
+- Deploy: `./utils/build_java_single.sh dsrc/sku.0/sys.server/compiled/game/script/library/pet_lib.java`, restart GameServer. No client files.
+- Revert: restore `pet_lib.java` from dsrc `master`.
+- Scope note: creatures remain NGE-baseline; only the taming math changed.
+
+**Exit criteria:** P13.3-P13.4 verified in game.
+
+---
+
 ## Completed projects
 
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
@@ -489,3 +514,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-05 | Skill trainer no longer lists already-learned skills in the learn list (dsrc `feature/trainer-hide-learned-skills`, compiles, untested). Ship radial diagnostics added (P12.9c). |
 | 2026-10-05 | P12.9d: Ship Travel opens the real starship terminal window (free) instead of the ticket window. dsrc `feature/atmos-ship-travel-and-park` (compiles, untested). |
 | 2026-10-06 | P12.11: space mouse flight now has a zero center deadzone (client-tools `feature/space-mouse-zero-deadzone`, untested). |
+| 2026-10-10 | Added P13: level 70+ creatures (Mustafar) untameable because tame_level caps at 34; level scaling in taming/call math. dsrc `feature/tame-scale-high-level-creatures` (compiles, untested). |
