@@ -418,24 +418,24 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 
 ### P13 — Taming high-level creatures (Mustafar babies had no Tame option)
 
-**Goal:** Level 70+ NGE creatures (Mustafar) can be tamed and called by a Creature Handler, without a Pre-CU skill-tree or client change.
+**Goal:** Level 70+ NGE creatures (Mustafar) can be tamed and called by a Creature Handler holding the full taming line, without a Pre-CU skill-tree or client change.
 
 **Primary paths (under `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/`):** `library/pet_lib.java` only (Java, no tables, no client files).
 
 | ID | Sub-target | Status |
 |----|------------|--------|
-| P13.1 | Root cause: Creature Handler line grants `tame_level` max 34 (12+10+2+2+3+5); Mustafar normals are level 72-83, elites 80-89. `getChanceToTame` returns 0 when level > tame level, so `ai.java` `OnObjectMenuRequest` never adds `PET_TAME`. Calling pets uses the same gate (`canControlPetsOfLevel`). Baby spawn itself works (`create.maybeMakeBaby` + `canTame`). | [x] |
-| P13.2 | `pet_lib.getEffectiveTameLevel(level)`: levels above 30 are compressed (`30 + (level-30)/15`: 72 -> 32, 89 -> 33). Applied once in `getChanceToTame(int,int,int)` and in the `canControlPetsOfLevel` level sum. dsrc `feature/tame-scale-high-level-creatures` (`156e592d9`, compiles with javac 21) | [~] code only |
+| P13.1 | Root cause: the four Creature Handler lines (taming/training/healing/support) plus novice+master grant `tame_level` 70 total; `getChanceToTame` returns 0 when the creature's **table** level (`create.calcCreatureLevel`, not the spawn-overridden level shown in game) is above it, so `ai.java` never adds `PET_TAME`. Calling pets uses the same gate (`canControlPetsOfLevel`). Of 91 non-elite tameable `som_` rows, 19 are <=70 and 72 are >70. Baby spawn itself works. | [x] |
+| P13.2 | `pet_lib.getEffectiveTameLevel(level)` caps the level used for taming/calling at `MAX_TAME_LEVEL_CAP` = 70, applied in `getChanceToTame(int,int,int)` and the `canControlPetsOfLevel` sum. dsrc `feature/tame-cap-high-level-creatures` (compiles with javac 21; chance arithmetic checked offline) | [~] code only |
 | P13.3 | Merge dsrc PR, bump `swg-main` dsrc pin, build `pet_lib.java`, restart GameServer | [ ] |
-| P13.4 | In-game smoke: Creature Handler near full taming line sees Tame on a Mustafar baby; taming succeeds; pet can be called; low-skill handler still sees no option; sub-30 creatures unchanged | [ ] |
+| P13.4 | In-game smoke: full-line Creature Handler sees Tame on a >70 non-aggro Mustafar baby; handler with tame_level < 70 does not; sub-70 creatures unchanged; pet can be called | [ ] |
 
 **Notes**
 
-- Effect: Mustafar creatures need effective tame level ~32-33, i.e. nearly the full Creature Handler line (base tame_level 34 at max). Non-aggro chance at full line is about 24-25%, aggro higher. Tune `TAME_LEVEL_SCALE_DIVISOR` / `TAME_LEVEL_SCALE_START` in `pet_lib.java` if too easy/hard.
-- Not changed: `pet_control_device.java` transfer check (~line 1939) still compares the raw level; harmless, revisit if transfer of high-level pets behaves oddly.
+- Behavior: above-70 creatures behave as level 70, so they need the full line (tame_level 70). Non-aggro chance at skill 80 is 23% (level 70+). Aggro creatures at that level show chance 5, below the `ai.java` menu threshold of 15, so aggro >~53 stay untameable (aggro skill 50, +10 wookiee/ithorian, + `tame_bonus` gear/food). Lower that threshold separately if wanted.
+- Superseded: dsrc `feature/tame-scale-high-level-creatures` (level compression, built on a wrong 34 cap) must not be merged; delete it.
+- Not changed: `pet_control_device.java` transfer check (~line 1939) still compares the raw level; the level shown in game can differ from the table level (spawn override), which is why some creatures displaying 80 are already tameable.
 - Deploy: `./utils/build_java_single.sh dsrc/sku.0/sys.server/compiled/game/script/library/pet_lib.java`, restart GameServer. No client files.
 - Revert: restore `pet_lib.java` from dsrc `master`.
-- Scope note: creatures remain NGE-baseline; only the taming math changed.
 
 **Exit criteria:** P13.3-P13.4 verified in game.
 
@@ -514,4 +514,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-05 | Skill trainer no longer lists already-learned skills in the learn list (dsrc `feature/trainer-hide-learned-skills`, compiles, untested). Ship radial diagnostics added (P12.9c). |
 | 2026-10-05 | P12.9d: Ship Travel opens the real starship terminal window (free) instead of the ticket window. dsrc `feature/atmos-ship-travel-and-park` (compiles, untested). |
 | 2026-10-06 | P12.11: space mouse flight now has a zero center deadzone (client-tools `feature/space-mouse-zero-deadzone`, untested). |
-| 2026-10-10 | Added P13: level 70+ creatures (Mustafar) untameable because tame_level caps at 34; level scaling in taming/call math. dsrc `feature/tame-scale-high-level-creatures` (compiles, untested). |
+| 2026-10-10 | Added P13: creatures above table level 70 (most of Mustafar) untameable because full Creature Handler tame_level is 70; cap level at 70 in taming/call math. dsrc `feature/tame-cap-high-level-creatures` (compiles, untested). |
