@@ -416,6 +416,31 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 ---
 - **P12.11 Space mouse flight: zero center deadzone (client-tools `feature/space-mouse-zero-deadzone`, not built or tested in game):** the ship mouse (virtual joystick) in `PlayerShipController.cpp` forced a center deadzone of at least 17.5% of the half reticle radius (about 60 px at the default 700 px space reticle) plus a fixed 4 px `deadZone`. The Options menu could not change it: the space reticle size is set by an optional `sliderDeadZoneSpace` slider that the options UI does not define (so it stays at the 700 default), and the ground slider only changes the ground reticle. Now the center deadzone defaults to 0; the reticle size only sets how far the cursor must travel for full deflection. Optional overrides in `[ClientGame/PlayerShipController]` of the client config: `deadZone` (pixels) and `deadZoneRatio` (fraction of the reticle half-size). Needs a `SwgClient` rebuild and a new `SwgClient_r.exe` (client-tools WORKFLOW §3). Open: a real Options slider for the ship mouse deadzone needs a UI layout change; not done.
 
+### P14 — GM command to complete a space quest (`/qatool completespacequest`)
+
+**Goal:** A GM can list and force-complete active space quests through the normal completion path when a kill is not counted (e.g. Freelancer line: Kessel imperial corvette).
+
+**Primary path:** `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/test/qatool.java` only (Java, no tables, no client files).
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P14.1 | Root cause of the uncounted kill: `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/space/quest_logic/destroy.java` `handleShipDestroyed` only counts a kill when the ship type is in the quest `shipTypes`, the ship's source spawner name matches the quest `validSpawns` point, and the ship is not already in `killTrack`. `/qatool kill` kills the ship but cannot supply a matching spawner. Exact Freelancer quest data file not identified. | [x] |
+| P14.2 | `qaCompleteSpaceQuests` + `completespacequest` branch in `cmdQaTool`: no argument lists active space quests in the datapad; with an argument completes every active quest whose name contains it (`questCompleteTask`, waypoint cleanup, `space_quest.setQuestWon`). dsrc `feature/qatool-complete-space-quest` (compiles with javac 21) | [~] code only |
+| P14.3 | Merge dsrc PR, bump `swg-main` dsrc pin, build `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/test/qatool.java`, restart GameServer | [ ] |
+| P14.4 | In-game smoke: `/qatool completespacequest` lists the quest; `/qatool completespacequest <name part>` completes it, journal entry closes, reward/next quest in the line is granted | [ ] |
+
+**Notes**
+
+- Requires god level 10+ and `test.qatool` attached (`script attach test.qatool <player OID>`).
+- The argument is a substring match; it can complete several quests at once. List first.
+- Task index 1 is the destroy task in `destroy.java`; other quest types may use a different task index, but `space_quest.setQuestWon` still completes the quest itself.
+- Deploy: `cd ~/repos/swg-main && ./utils/build_java_single.sh dsrc/sku.0/sys.server/compiled/game/script/test/qatool.java`, restart GameServer. No client files.
+- Revert: restore `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/test/qatool.java` from dsrc `master`, rebuild it, restart GameServer.
+
+**Exit criteria:** P14.3-P14.4 verified in game.
+
+---
+
 ## Completed projects
 
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
