@@ -441,6 +441,32 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 
 ---
 
+### P14 — Looted schematics: "you must have skl_n:[class_...] skill" messages
+
+**Goal:** Looted / quest / generated schematics show and enforce Pre-CU skills, never NGE `class_*` names.
+
+**Primary paths (under `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/`):** `item/loot_schematic/loot_schematic.java`, `item/loot_schematic/loot_schematic_nonlimited.java`, `library/weapons.java`, `gm/cmd.java`. Java only, no tables, no client files.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P14.1 | Diagnose: current `dsrc` master remaps `class_*` to Pre-CU on init and on use (commit `fbfc89352`, 2026-09-26), and the pre-fix code printed the raw `skill_req`, which matches the reported messages (`class_structures_phase4_novice`, `class_domestics_phase2_02`). None of the 113 `object/tangible/loot/loot_schematic/*.tpf` templates (106 have a `skill_req`) nor the 205 `skill_req` templates overall contain `class_*`. Most likely the server runs a stale compiled `loot_schematic` class (compiled `.class` files are not in git) | [x] (hypothesis, not confirmed on the server) |
+| P14.2 | Remove the last hardcoded `class_munitions_phase4_master` (`weapons.createLimitedUseSchematic`, `/GmWeapon limUseSchematic`) | [~] code only |
+| P14.3 | Log raw vs remapped `skill_req` on use (LOG channel `loot_schematic`, tag `build=remap-v2`) so the server log shows which build is running | [~] code only |
+| P14.4 | Merge dsrc PR, bump `swg-main` dsrc pin, rebuild `loot_schematic.java`, `loot_schematic_nonlimited.java`, `weapons.java`, `cmd.java` (and `armor.java`, `vehicle.java` if not rebuilt since 2026-09-26), restart GameServer | [ ] |
+| P14.5 | In-game smoke: use a looted schematic that used to show `class_structures_phase4_novice` / `class_domestics_phase2_02`; the message (if any) must now name a `crafting_*` skill; grep the server log for `build=remap-v2` | [ ] |
+
+**Implementation status (2026-10-14) - code complete, compiles (javac 21), NOT deployed or tested**
+
+- dsrc branch `feature/loot-schematic-skill-req-hardening` (`21815ed10`, based on dsrc master `e4d3491e7`). Compare: https://github.com/daquorm89/dsrc/compare/master...feature/loot-schematic-skill-req-hardening
+- Deploy: `./utils/build_java_single.sh` on `loot_schematic.java` first (the nonlimited script calls its remap), then the other three; restart GameServer.
+- If `build=remap-v2` never appears in the log after the rebuild but the old message still does, the class is not being loaded from the rebuilt tree; check the compiled `.class` timestamp under `~/repos/swg-main/data/sku.0/sys.server/compiled/game/script/item/loot_schematic/`.
+- Not touched (out of scope): other `hasSkill(..., "class_*")` checks (`utils.java`, `pet_master.java`, `xp.java`, imperial crackdown scripts) and `reverse_engineering_tool.SKILL_LIST`.
+- Revert: restore the four files from dsrc `master`.
+
+**Exit criteria:** P14.4-P14.5 verified in game.
+
+---
+
 ## Completed projects
 
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
@@ -515,3 +541,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-05 | P12.9d: Ship Travel opens the real starship terminal window (free) instead of the ticket window. dsrc `feature/atmos-ship-travel-and-park` (compiles, untested). |
 | 2026-10-06 | P12.11: space mouse flight now has a zero center deadzone (client-tools `feature/space-mouse-zero-deadzone`, untested). |
 | 2026-10-10 | Added P13: creatures above table level 70 (most of Mustafar) untameable because full Creature Handler tame_level is 70; cap level at 70 in taming/call math. dsrc `feature/tame-cap-high-level-creatures` (compiles, untested). |
+| 2026-10-14 | Added P14: looted schematics showing NGE `class_*` skill names; hardening + diagnostic log on dsrc `feature/loot-schematic-skill-req-hardening` (compiles, untested). |
