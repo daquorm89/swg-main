@@ -416,6 +416,30 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 ---
 - **P12.11 Space mouse flight: zero center deadzone (client-tools `feature/space-mouse-zero-deadzone`, not built or tested in game):** the ship mouse (virtual joystick) in `PlayerShipController.cpp` forced a center deadzone of at least 17.5% of the half reticle radius (about 60 px at the default 700 px space reticle) plus a fixed 4 px `deadZone`. The Options menu could not change it: the space reticle size is set by an optional `sliderDeadZoneSpace` slider that the options UI does not define (so it stays at the 700 default), and the ground slider only changes the ground reticle. Now the center deadzone defaults to 0; the reticle size only sets how far the cursor must travel for full deflection. Optional overrides in `[ClientGame/PlayerShipController]` of the client config: `deadZone` (pixels) and `deadZoneRatio` (fraction of the reticle half-size). Needs a `SwgClient` rebuild and a new `SwgClient_r.exe` (client-tools WORKFLOW §3). Open: a real Options slider for the ship mouse deadzone needs a UI layout change; not done.
 
+### P15 — Mounted combat (ranged attacks while riding a creature mount)
+
+**Goal:** A rider on a creature mount can use basic ranged attacks (pistol, rifle, light rifle, generic ranged shot). Melee, special attacks and vehicles unchanged until this is proven in game.
+
+**Primary paths:** `~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/command/command_table.tab` and `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/datatables/command/command_table.tab` (data only, no Java, no C++).
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P15.1 | Root cause: the four ranged rows had `L:ridingCreature`=0 and `S:ridingMount`=0, so the command queue refuses them while mounted. Server C++ combat code and `systems/combat/combat_player.java` already support mounted riders (mount speed on enter/leave combat), so no code gate found. | [x] |
+| P15.2 | Set `L:ridingCreature` (col 27) and `S:ridingMount` (col 60) to 1 for `rangedShot`, `rangedShotpistol`, `rangedShotrifle`, `rangedShotlightRifle` in both `.tab` copies. dsrc `feature/mounted-ranged-combat` | [~] data only |
+| P15.3 | Merge dsrc PR, bump `swg-main` dsrc pin, rebuild BOTH `command_table.tab` with DataTableTool, deploy server IFF to server copies and shared IFF to client (see notes), restart GameServer + client | [ ] |
+| P15.4 | In-game smoke: mounted rider can fire a pistol/rifle/light rifle; dismount still works; unmounted combat unchanged; check if galloping should slow or block shooting | [ ] |
+| P15.5 | Optional follow-ups: allow melee / special attacks while mounted; vehicles (`L:drivingVehicle`); accuracy penalty while galloping via existing `library/combat.java` `cachedIsGalloping` (defined, currently unused) | [ ] |
+
+**Notes**
+
+- The server and shared `command_table.tab` differ in about 560 lines (server-only hooks such as `cppHook` `setPosture` on kneel/prone/stand). Do NOT use the generic WORKFLOW command_table step that copies the shared `.iff` over every copy: it would drop the server-only hooks. Build both, put the server build on server copies and the shared build on the client.
+- Client needs the rebuilt shared `command_table.iff` at `datatables/command/command_table.iff` (client may also check the table); full client restart.
+- Revert: restore both `.tab` files from dsrc `master`, rebuild, redeploy, restart.
+
+**Exit criteria:** P15.3-P15.4 verified in game.
+
+---
+
 ## Completed projects
 
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
