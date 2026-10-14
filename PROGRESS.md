@@ -436,6 +436,15 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 - Client needs the rebuilt shared `command_table.iff` at `datatables/command/command_table.iff` (client may also check the table); full client restart.
 - Revert: restore both `.tab` files from dsrc `master`, rebuild, redeploy, restart.
 
+**Investigation status (2026-10-14) - mounted ranged fire still reported NOT working after the table edit; cause not yet found, no code changed**
+
+- Reported: tables rebuilt and the shared `command_table.iff` copied to the client; mounted ranged attack still does not work. In-game symptom not yet recorded (could not test).
+- Verified by reading code/data (dsrc master `c73811d9`, src master `4e59853`, client-tools `d42d689`): the four rows have `L:ridingCreature`=1 (0-based col 26) and `S:ridingMount`=1 (col 59) in both `command_table.tab` copies; no duplicate rows; `command_table_ground.tab` (loaded after) does not override them; a rider's posture `RidingCreature` maps to locomotion `RidingCreature` (`movement_human`); the client sends `rangedShot` + weapon type (e.g. `rangedShotpistol`), matching the edited rows.
+- Verified no gate: server `CreatureObject::doWarmupChecks` only checks locomotion/state/ability/target type; Java `combat_base.doCombatPreCheck` has no mount check (only `doHealingPreCheck` refuses galloping/vehicle riders); client `ClientCommandChecks` mirrors the same table checks.
+- Open suspects (unverified): (1) client `getTargetUnderCursor()` picking the rider's own mount with auto-aim off (same suspicion as P10); (2) `canSee(attacker, target)` from a rider that is removed from the CollisionWorld; (3) another blocking state at fire time (`alert`, `swimming`, `stunned`, ...).
+- Next test (no log needed): mount, target a hostile, type `/rangedShotpistol` (or matching weapon) with auto-aim ON and OFF. Chat message = server refused it (wording gives the reason); total silence = client dropped it; animation but no damage = Java/LOS/target validation. If inconclusive, add a temporary chat diagnostic in `combat_actions.java` `rangedShot` on a feature branch.
+- Note: the server `command_table.iff` and the shared one differ (server-only hooks); deploy each to its own side (see Notes above).
+
 **Exit criteria:** P15.3-P15.4 verified in game.
 ### P13 — Taming high-level creatures (Mustafar babies had no Tame option)
 
@@ -563,3 +572,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-06 | P12.11: space mouse flight now has a zero center deadzone (client-tools `feature/space-mouse-zero-deadzone`, untested). |
 | 2026-10-10 | Added P13: creatures above table level 70 (most of Mustafar) untameable because full Creature Handler tame_level is 70; cap level at 70 in taming/call math. dsrc `feature/tame-cap-high-level-creatures` (compiles, untested). |
 | 2026-10-14 | Added P14: looted schematics showing NGE `class_*` skill names; hardening + diagnostic log on dsrc `feature/loot-schematic-skill-req-hardening` (compiles, untested). |
+| 2026-10-14 | P15: mounted ranged combat still failing after the table edit; static investigation recorded (no cause found yet), next in-game test steps listed. |
