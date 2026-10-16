@@ -497,6 +497,25 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 
 ---
 
+
+### P16 — POB ship item limit + combat QoL (left-click pets/mounts)
+
+**Goal:** (1) POB ship interior storage raised to house max (500). (2) Disable accidental left-click interactions on droids/mounts/pets (force radial). (3) Continue P15 mounted combat diagnosis.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P16.1 | POB ships: set `structure.capacity_override` = 500 (maxHouseItemLimit) on SCD menu open for all player_* chassis; upgrade legacy gunship 150. dsrc `feature/pob-ship-item-limit-max` | [~] code only |
+| P16.2 | Disable left-click default actions on droids, mounts, and pets (conversations, mount, store, etc. must use radial only) | [ ] |
+| P16.3 | P15 follow-up: mounted ranged still silent on `/rangedShotpistol`; confirm shared `command_table.iff` is on client TRE; add temporary diagnostic if needed | [ ] |
+
+**Notes**
+
+- P16.1: base was lots_consumed(4)/4 * multiplier(100) = 100. Override to 500 matches `ConfigServerGame::maxHouseItemLimit`. Placed + container contents already share the counter (`TangibleObject_PobItemLimit.cpp`). Applies when owner opens ship control device radial (existing + new ships).
+- Deploy P16.1: merge dsrc PR, bump swg-main dsrc pin, `./utils/build_java_single.sh dsrc/sku.0/sys.server/compiled/game/script/space/ship_control_device/ship_control_device.java`, restart GameServer. No client files.
+- P16.2 open: left-click triggers default radial entry (mount / converse / command). Prefer clearing default menu item or gating OnObjectMenuSelect when player is in combat / not holding radial.
+
+**Exit criteria:** P16.1 verified in game (ship shows 500 capacity); P16.2 no accidental mount/converse on left-click in combat.
+
 ## Completed projects
 
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
@@ -573,3 +592,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-10 | Added P13: creatures above table level 70 (most of Mustafar) untameable because full Creature Handler tame_level is 70; cap level at 70 in taming/call math. dsrc `feature/tame-cap-high-level-creatures` (compiles, untested). |
 | 2026-10-14 | Added P14: looted schematics showing NGE `class_*` skill names; hardening + diagnostic log on dsrc `feature/loot-schematic-skill-req-hardening` (compiles, untested). |
 | 2026-10-14 | P15: mounted ranged combat still failing after the table edit; static investigation recorded (no cause found yet), next in-game test steps listed. |
+| 2026-10-16 | P16: POB ship item limit to 500 (dsrc `feature/pob-ship-item-limit-max`); track left-click pet/mount disable + P15 follow-up. |
