@@ -505,7 +505,7 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 | ID | Sub-target | Status |
 |----|------------|--------|
 | P16.1 | POB ships: set `structure.capacity_override` = 500 (maxHouseItemLimit) on SCD menu open for all player_* chassis; upgrade legacy gunship 150. dsrc `feature/pob-ship-item-limit-max` | [~] code only |
-| P16.2 | Disable left-click default actions on droids, mounts, and pets (conversations, mount, store, etc. must use radial only) | [ ] |
+| P16.2 | Disable left-click default actions on droids, mounts, and pets while player is in combat (dismount still allowed). dsrc `feature/disable-leftclick-pet-mount-droid` | [~] code only |
 | P16.3 | P15 follow-up: mounted ranged still silent on `/rangedShotpistol`; confirm shared `command_table.iff` is on client TRE; add temporary diagnostic if needed | [ ] |
 
 **Notes**
