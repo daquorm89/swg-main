@@ -445,7 +445,21 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 - Next test (no log needed): mount, target a hostile, type `/rangedShotpistol` (or matching weapon) with auto-aim ON and OFF. Chat message = server refused it (wording gives the reason); total silence = client dropped it; animation but no damage = Java/LOS/target validation. If inconclusive, add a temporary chat diagnostic in `combat_actions.java` `rangedShot` on a feature branch.
 - Note: the server `command_table.iff` and the shared one differ (server-only hooks); deploy each to its own side (see Notes above).
 
-**Exit criteria:** P15.3-P15.4 verified in game.
+**Implementation status (2026-10-16) - code complete, NOT built, NOT deployed, NOT tested in game**
+
+- Root cause of the follow-on breakage (dismount dead, heavy weapons dead, "normal attack silent"): src master's `CreatureObject::doesLocomotionInvalidateCommand` REPLACED the locomotion with `RidingCreature` for every command while `RidingMount` is set. Any command without `L:ridingCreature=1` then fails silently (client `TC_failInvalidLocomotion` is an empty break). Table rows were patched one family at a time (ranged, then dismount + heavy fire) instead of fixing the rule.
+- Fix: both the server check and the client check now run the ORIGINAL locomotion rule first, and only when it refuses the command AND the rider is mounted AND the command row has `L:ridingCreature=1` is the command accepted (union, not replacement). Commands that worked mounted before keep working.
+- Branches (same name in each repo): src `feature/mounted-locomotion-union` (`cb3ff614`, `engine/server/library/serverGame/src/shared/object/CreatureObject.cpp`); client-tools `feature/mounted-locomotion-union` (`f1d8907f`, `src/engine/client/library/clientGame/src/shared/command/ClientCommandChecks.cpp`). No dsrc change: master already has the dismount / heavy-weapon table rows.
+- Supersedes: client-tools `feature/mounted-attack-locomotion-fix` (forced locomotion, never merged: do NOT build the client from it) and the `movement_human.tab` branch dsrc `feature/mounted-riding-locomotion-table` (not needed, do not merge).
+- The turret-guard half of src `feature/turret-native-guard-and-mount-loco-union` is NOT part of this work (turret program is a separate project); its mount hunk is identical to the src branch above.
+- Not touched, still open: riders are removed from the CollisionWorld while mounted (LOS suspect if damage still fails after commands fire); src `fix-mount-posture-dismount` behaviour for kneeling/prone riders is unverified.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P15.6 | Merge src + client-tools PRs, rebuild `serverGame` + `SwgGameServer` and `SwgClient`, deploy, restart GameServer + full client restart | [ ] |
+| P15.7 | In-game smoke: mounted - pistol/rifle mouse attack fires standing and moving; heavy weapon fires; radial Dismount works; non-riding-flag commands (e.g. stand, emotes, other abilities) behave as before the forced-locomotion change | [ ] |
+
+**Exit criteria:** P15.3-P15.4 and P15.6-P15.7 verified in game.
 ### P13 — Taming high-level creatures (Mustafar babies had no Tame option)
 
 **Goal:** Level 70+ NGE creatures (Mustafar) can be tamed and called by a Creature Handler holding the full taming line, without a Pre-CU skill-tree or client change.
@@ -573,3 +587,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-10 | Added P13: creatures above table level 70 (most of Mustafar) untameable because full Creature Handler tame_level is 70; cap level at 70 in taming/call math. dsrc `feature/tame-cap-high-level-creatures` (compiles, untested). |
 | 2026-10-14 | Added P14: looted schematics showing NGE `class_*` skill names; hardening + diagnostic log on dsrc `feature/loot-schematic-skill-req-hardening` (compiles, untested). |
 | 2026-10-14 | P15: mounted ranged combat still failing after the table edit; static investigation recorded (no cause found yet), next in-game test steps listed. |
+| 2026-10-16 | P15: forced-RidingCreature rule replaced by a union rule (server + client); src and client-tools `feature/mounted-locomotion-union` (code only, untested). |
