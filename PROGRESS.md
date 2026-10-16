@@ -459,7 +459,11 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 | P15.6 | Merge src + client-tools PRs, rebuild `serverGame` + `SwgGameServer` and `SwgClient`, deploy, restart GameServer + full client restart | [ ] |
 | P15.7 | In-game smoke: mounted - pistol/rifle mouse attack fires standing and moving; heavy weapon fires; radial Dismount works; non-riding-flag commands (e.g. stand, emotes, other abilities) behave as before the forced-locomotion change | [ ] |
 
-**Exit criteria:** P15.3-P15.4 and P15.6-P15.7 verified in game.
+| P15.8 | **Creature mount radial only teleports the rider into the mount, no riding (2026-10-16 report); vehicles / droid vehicles mount fine.** Prime suspect: a `movement_human.iff` compiled earlier from the UNMERGED dsrc branch `feature/mounted-riding-locomotion-table` is still deployed on the server (every copy under `~/repos/swg-main`) and on the client (`datatables/movement/movement_human.iff`). That branch changes only the `RidingCreature` row (slow/fast filled in); vehicles use the untouched `DrivingVehicle` row, which fits. src `89a02ce2` describes the same symptom after that table change. dsrc `master` has the stock row, so compiled `.iff` and `.tab` have diverged. Fix = rebuild `movement_human.iff` from dsrc master and restore it to ALL copies incl. the client (commands in chat; WORKFLOW 6.3 datatable pattern). The union rule (P15.6) makes the mapped row unnecessary | [ ] unverified |
+
+If P15.8 does not fix it: record the server log (`mounts-bug` / `mount` channels, `LOG` lines are not DEBUG_LOG) and whether the client shows the rider on the saddle for a moment before snapping off; next suspects are the Java `pet_lib.setMountedMovementRate` (commit `3af7935b`) and anything detaching the rider after `mountCreature` returns true.
+
+**Exit criteria:** P15.3-P15.4 and P15.6-P15.8 verified in game.
 ### P13 — Taming high-level creatures (Mustafar babies had no Tame option)
 
 **Goal:** Level 70+ NGE creatures (Mustafar) can be tamed and called by a Creature Handler holding the full taming line, without a Pre-CU skill-tree or client change.
