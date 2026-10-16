@@ -445,6 +445,15 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 - Next test (no log needed): mount, target a hostile, type `/rangedShotpistol` (or matching weapon) with auto-aim ON and OFF. Chat message = server refused it (wording gives the reason); total silence = client dropped it; animation but no damage = Java/LOS/target validation. If inconclusive, add a temporary chat diagnostic in `combat_actions.java` `rangedShot` on a feature branch.
 - Note: the server `command_table.iff` and the shared one differ (server-only hooks); deploy each to its own side (see Notes above).
 
+**Checkpoint 2026-10-16 - client-side hypothesis + fix branch (UNVERIFIED in game)**
+
+- Symptom (user test): mounted, target a hostile + left mouse button = no feedback at all. The client has two deliberately silent exits in `GroundCombatActionManager::update` (`TC_failNoTarget`, `canEnqueueCombatCommand`); locomotion/state failures would show a message, so the table/server are not the cause of this symptom.
+- Hypothesis: with auto-aim ON, `doAutoAimLOSCheck` casts rays from the rider's collision sphere (inside the mount's collision volume) with `CF_tangible` and no exclude object, so the mount blocks LOS every time and the target is dropped.
+- Fix: client-tools branch `feature/mounted-autoaim-los-exclude-mount`, commit `ac4a4a5` (based on client-tools `main` `d42d689`). One function: `doAutoAimLOSCheck` now passes the rider's mount as `excludeObject` to all six `ClientWorld::collide` calls. Client binary change only - no server/table/Java change, no GameServer restart.
+- Deploy: cherry-pick `ac4a4a5` onto the branch the playable client is built from (other client feature branches such as `feature/precu-skills-show-jedi-fs` are NOT merged into `main`), rebuild `SwgClient` (Release | Win32), deploy the new `SwgClient_r.exe`, full client restart.
+- Not covered / unverified: auto-aim OFF path (objects under cursor may include the rider's own mount; the code that builds the ordered target list was not inspected); compile not tested (Windows client could not be built in the sandbox).
+- Test after deploy: mount, auto-aim ON, target hostile, left click. If still silent: auto-aim OFF, then typed `/rangedShotpistol` (matching weapon) and report which behave differently.
+
 **Exit criteria:** P15.3-P15.4 verified in game.
 ### P13 — Taming high-level creatures (Mustafar babies had no Tame option)
 
@@ -573,3 +582,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-10 | Added P13: creatures above table level 70 (most of Mustafar) untameable because full Creature Handler tame_level is 70; cap level at 70 in taming/call math. dsrc `feature/tame-cap-high-level-creatures` (compiles, untested). |
 | 2026-10-14 | Added P14: looted schematics showing NGE `class_*` skill names; hardening + diagnostic log on dsrc `feature/loot-schematic-skill-req-hardening` (compiles, untested). |
 | 2026-10-14 | P15: mounted ranged combat still failing after the table edit; static investigation recorded (no cause found yet), next in-game test steps listed. |
+| 2026-10-16 | P15: client-side fix branch `feature/mounted-autoaim-los-exclude-mount` (client-tools, `ac4a4a5`) added for the silent mounted-attack symptom; awaiting build + in-game test. |
