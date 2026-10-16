@@ -497,6 +497,26 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 
 ---
 
+
+### P16 — POB ship item limit + left-click pets/mounts + mounted combat
+
+**Goal:** (1) True POB ships (YT-1300, Decimator, etc.) get a high shared item limit. (2) No left-click default actions on pets/mounts/droids. (3) Mounted ranged still open.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P16.1 | C++: ships skip `maxHouseItemLimit` clamp in `getPobBaseItemLimit`. src `feature/pob-ship-no-house-item-cap` | [~] code only |
+| P16.2 | Java: POB chassis `structure.capacity_override` = 5000 (YT-1300, Decimator, YT-2400, YKL-37R, Y8, SoroSuub, gunships). dsrc `feature/pob-ship-item-limit-high` | [~] code only |
+| P16.3 | Client: `performDefaultAction` ignores pets (has master) and mounts (C_mount). Radial unchanged. client-tools `feature/no-leftclick-pet-mount-droid` | [~] code only |
+| P16.4 | P15: `/rangedShotpistol` is **toolbarOnly=1** — client drops chat invocation with no server message. Test mounted fire via mouse/toolbar only. Mounted combat still open. | [ ] |
+
+**Notes**
+
+- Prior 500 attempt was wrong: even with override, C++ did `min(override, maxHouseItemLimit=500)`. Ships must skip that clamp; 5000 is the intentional POB ceiling.
+- Deploy: merge src + dsrc + client-tools; rebuild GameServer (C++ + Java ship_control_device); rebuild client; open SCD radial on ship to stamp override.
+- Left-click: earlier combat-only server gate (`feature/disable-leftclick-pet-mount-droid`) is optional belt-and-suspenders; client is the real fix.
+
+**Exit criteria:** POB ship shows capacity 5000; left-click on pet/mount does nothing; radial still works; mounted primary attack verified or next root cause found.
+
 ## Completed projects
 
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
@@ -573,3 +593,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-10 | Added P13: creatures above table level 70 (most of Mustafar) untameable because full Creature Handler tame_level is 70; cap level at 70 in taming/call math. dsrc `feature/tame-cap-high-level-creatures` (compiles, untested). |
 | 2026-10-14 | Added P14: looted schematics showing NGE `class_*` skill names; hardening + diagnostic log on dsrc `feature/loot-schematic-skill-req-hardening` (compiles, untested). |
 | 2026-10-14 | P15: mounted ranged combat still failing after the table edit; static investigation recorded (no cause found yet), next in-game test steps listed. |
+| 2026-10-16 | P16 corrected: ships skip house 500 cap (src); POB override 5000 (dsrc); client no left-click on pet/mount/droid; `/rangedShotpistol` is toolbarOnly so slash is not a valid test. |
