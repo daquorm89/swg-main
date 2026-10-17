@@ -564,6 +564,8 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 - Needed to confirm: server log line `grantPobPilotDroidCommands: ship=... droidPcd=... programs=N` when sitting in the YT-1300 pilot chair (droidPcd invalid = flight computer not associated; programs=0 = datapad read problem).
 - Next if confirmed: make revoke independent of the current device (revoke every `droid+*` command the player holds) and fix association of the flight computer for POB ships.
 
+**Update 2 (2026-10-17):** after sitting in the operations seat the programs are granted and show in the pilot seat too, but running one gives "you cannot cmd_n:[droid] while piloting a ship". Cause: `command_table_space.tab` rows `droid` and `droidcommand_turretdefense` have `S:pilotingPobShip=0` (denied) and only `S:shipOperations=1` (vanilla design: POB droid commands from the operations seat). Fix: dsrc `feature/pob-pilot-droid-command-state` (`0e96d2774`) sets `S:pilotingPobShip=1` on both rows. Needs a command table rebuild on server AND client data. Still open: the pilot seat grant itself (`grantPobPilotDroidCommands` log line) not confirmed.
+
 ---
 
 ## Completed projects
