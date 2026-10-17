@@ -555,6 +555,17 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 - Still unverified: whether `isUsingCorrectComputer` accepts the player's droid for the YT-1300 (`ship_droid_assignments.tab` lists `player_yt1300.iff` as `flight_computer`, so an astromech droid is refused for it, a flight computer is needed).
 - Revert: remove the `grantPobPilotDroidCommands` calls and the `revokeDroidCommands` line in `cmdLeaveStation`.
 
+**Update (2026-10-17, after in-game test of the pilot-seat fix):** the tab is NOT empty; only programs loaded on the **ship computer (flight computer)** are missing. Static findings:
+
+- The client Astromech tab = the player's granted `droid+<program>` names (first word before `+` must be a known command, `droid`, group `astromech`) plus table rows with `visibleToClients > 2` (only `droidcommand_turretdefense` today). Source: `SwgCuiCommandBrowser.cpp`.
+- Server grants come only from `space_combat.getProgrammedDroidCommands(player)`: containing ship -> `getDroidControlDeviceForShip(ship)` -> `SLOT_DATAPAD` contents with objvar `strDroidCommand`. Same code for droid and flight computer, so a difference means the ship has no associated control device (returns null) when the grant runs.
+- `revokeDroidCommands` revokes from the CURRENT ship's device, so grants made earlier (e.g. from an astromech in a starfighter) are never revoked after the device changes. This could explain "vanilla visible, ship-computer ones missing" (stale grants vs. no new grants). Unverified.
+- `player_yt1300.iff` = `flight_computer`; `OnTryToEquipDroidControlDeviceInShip` refuses an astromech for it (`need_flight_computer`).
+- Needed to confirm: server log line `grantPobPilotDroidCommands: ship=... droidPcd=... programs=N` when sitting in the YT-1300 pilot chair (droidPcd invalid = flight computer not associated; programs=0 = datapad read problem).
+- Next if confirmed: make revoke independent of the current device (revoke every `droid+*` command the player holds) and fix association of the flight computer for POB ships.
+
+**Update 2 (2026-10-17):** after sitting in the operations seat the programs are granted and show in the pilot seat too, but running one gives "you cannot cmd_n:[droid] while piloting a ship". Cause: `command_table_space.tab` rows `droid` and `droidcommand_turretdefense` have `S:pilotingPobShip=0` (denied) and only `S:shipOperations=1` (vanilla design: POB droid commands from the operations seat). Fix: dsrc `feature/pob-pilot-droid-command-state` (`0e96d2774`) sets `S:pilotingPobShip=1` on both rows. Needs a command table rebuild on server AND client data. Still open: the pilot seat grant itself (`grantPobPilotDroidCommands` log line) not confirmed.
+
 ---
 
 ## Completed projects
