@@ -464,6 +464,17 @@ See also repo root `todo.md` for PR links and per-commit deploy commands.
 
 If P15.8 does not fix it: record the server log (`mounts-bug` / `mount` channels, `LOG` lines are not DEBUG_LOG) and whether the client shows the rider on the saddle for a moment before snapping off; next suspects are the Java `pet_lib.setMountedMovementRate` (commit `3af7935b`) and anything detaching the rider after `mountCreature` returns true.
 
+**Mounted combat visuals (2026-10-17) - code complete, NOT built, NOT deployed, NOT tested in game**
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P15.10 | **Mounted heavy weapons: impact effects fixed at the mount-up spot (damage works).** Cause (static reading): `SwgCuiHud.cpp` skipped the whole ground-reticle update while `States::RidingMount` was set, so `ReticleManager` last point/cell/valid were never refreshed. The local attack playback (`GroundCombatActionManager.cpp` ~1297) used the stale point from when the player last stood on foot; no location params were sent (reticle never valid), so the server fell back to the target position. Fix: client-tools `feature/mounted-heavy-weapon-reticle` (`4a7aff52c`): reticle updates while mounted like on foot; `hitReticle()` excludes the rider's own mount from the ray; rider not turned to the reticle while mounted. Needs `SwgClient` rebuild + new exe. Behaviour change: mounted heavy shots now send location params like on-foot shots | [ ] |
+| P15.11 | **Pistol/ranged projectiles vanish behind the mount model (hypothesis: depth occlusion by the mount mesh, muzzle inside mount volume).** Mitigation: client-tools same branch, separate commit `a2a62bb4f` (`FireProjectileActionTemplate.cpp`): when the muzzle->target path hits the mount appearance, start the projectile at the exit point (cast target->muzzle, skip at most half the path). Revert that commit alone if it looks wrong | [ ] unverified guess |
+| P15.12 | **Double mount message \"You cannot Mount while Riding a Mount.\"** Cause: client sends `mount` directly for `SERVER_PET_MOUNT` (`CuiRadialMenuManager.cpp` ~2309) and then `executeCommandForMenu` runs the `mount` command from the `radial_menu.tab` row. Fix already on dsrc `feature/radial-pet-mount-no-duplicate` (`75d626441`, empties that row's command; fast-forwards onto dsrc master, 4 columns kept). Needs merge, `DataTableTool -i radial_menu.tab`, `radial_menu.iff` to every server copy and every client, restart | [ ] |
+| P15.13 | Heavy weapons show no projectile even on foot. NOT investigated; probably data / playback script, not mounted-specific | [ ] |
+
+Smoke after rebuilding the client: pistol fired in several directions across the mount keeps a visible bolt; mounted heavy weapon (auto-aim on and off) shows the reticle and impacts land on the target; mount shows no \"cannot mount\" message; mounted dismount and on-foot heavy shot unchanged. Temporary `HEAVYDIAG` branch dsrc `feature/diag-mounted-heavy-weapon` is not needed for this and must not be merged.
+
 **Exit criteria:** P15.3-P15.4 and P15.6-P15.9 verified in game.
 ### P13 — Taming high-level creatures (Mustafar babies had no Tame option)
 
@@ -596,3 +607,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-17 | P15.9: creature-mount radial teleport bug still open; static review found no mount-start regression; temporary MOUNTDIAG diagnostic on dsrc `feature/diag-mount-radial` awaiting an in-game run. |
 | 2026-10-17 | P15.9 run 3: stack trap shows server runs `taming.dismount` (client `dismount` command) ~1 s after mount; older client exe mounts fine, so the cause is a client-tools regression (candidates #36/#37/#38), not server code. |
 | 2026-10-17 | P15.9 FIXED: radial_menu.tab GOD_TELEPORT row moved to index 109; verified in game (no stray dismount, mount holds, dismount works). Cleanup branch `feature/remove-mountdiag` removes the temporary diagnostics. Next: P15.6-P15.7 mounted-combat retests (heavy weapon, pistol, dismount). |
+| 2026-10-17 | P15.10-P15.13: mounted heavy-weapon impact location (stale reticle point), projectile-vs-mount occlusion mitigation, double-mount radial fix identified. client-tools `feature/mounted-heavy-weapon-reticle`, dsrc `feature/radial-pet-mount-no-duplicate` (code only, untested). |
