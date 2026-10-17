@@ -533,6 +533,30 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ---
 
+### P16 — Droid commands (incl. Turret Defense) on POB ships: empty Astromech tab
+
+**Goal:** Programs loaded on a droid or flight computer must show up (and run) for the player in a POB ship such as the YT-1300, same as in a starfighter. Needed before the droid turret-defense program (`droidcommand_turretdefense`, POB only) can be tested.
+
+**Symptom (2026-10-17, YT-1300):** programs stay loaded on the droid / flight computer (verified on the device) and the droid is installed in the ship, but the Astromech tab of the commands window is completely empty, vanilla programs included. Starfighters work.
+
+**Cause (static, confirmed in code, not yet in game):** the Astromech tab lists the player's granted commands (`SwgCuiCommandBrowser` uses `player->getCommands()`). The server grants `droid+<program>` with `space_transition.grantDroidCommands`, which is called (1) from `unpackShipForPlayer` only when the ship has NO interior and (2) from `shipoperations_falcon` (the operations seat). The POB pilot seat (`cmdPilotShip`, atmosphere board paths) never granted them.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P16.1 | Find why the tab is empty on POB ships | [x] |
+| P16.2 | `space_transition.grantPobPilotDroidCommands` (logs droid PCD + program count), called after the POB pilot is seated: `combat_ship_player.cmdPilotShip`, `boardShipAsPilotOnGround`, 3 `completeBoardShipAfterClientRefresh` re-seat paths; revoke on Leave Station from the POB pilot seat | [x] (code, compiles) |
+| P16.3 | Deploy and verify in game: pilot seat AND operations seat of the YT-1300 | [ ] |
+| P16.4 | Verify `/droid turretdefense` actually runs once the tab is populated (`doDroidPreCheck`: interface slot installed and enabled, droid PCD associated, program on the datapad) | [ ] |
+
+**Implementation status (2026-10-17) - code only, compiles with javac, NOT deployed or tested**
+
+- dsrc branch `feature/pob-pilot-droid-commands` (commit `bf79b18c7`): `script/library/space_transition.java`, `script/space/combat/combat_ship_player.java`.
+- Smoke test: with a droid/flight computer programmed and installed in the YT-1300, sit in the pilot chair: Astromech tab lists the programs; Leave Station: they disappear; operations seat still grants them. Server log (`LOG space_transition`) prints `grantPobPilotDroidCommands: ship=... droidPcd=... programs=N`; `droidPcd` invalid or `programs=-1/0` means the droid is not associated with the ship (starship terminal) or has no programs, not a grant bug.
+- Still unverified: whether `isUsingCorrectComputer` accepts the player's droid for the YT-1300 (`ship_droid_assignments.tab` lists `player_yt1300.iff` as `flight_computer`, so an astromech droid is refused for it, a flight computer is needed).
+- Revert: remove the `grantPobPilotDroidCommands` calls and the `revokeDroidCommands` line in `cmdLeaveStation`.
+
+---
+
 ## Completed projects
 
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
@@ -617,3 +641,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-17 | P15.14-P15.17: vehicle riders could not fire because `disableVehicleRiderCombatAnimationState` defaulted to true (attack stalled before playback). Fixed in client-tools `feature/vehicle-rider-combat-animation-state`, verified in game with MOUNTPLAYDIAG on a mount and a vehicle; saddle-based bolt occlusion fix on `feature/vehicle-mounted-bolt-saddle-appearance`. |
 | 2026-10-17 | P12.12: POB ship erratic in atmosphere because interior items counted as obstacles in the client obstacle probe. client-tools `feature/atmos-pob-ignore-interior-objects` (code only, untested). |
 | 2026-10-17 | P12.13: ships placed on the ground by Call Ship / Exit Ship are now levelled (yaw kept, pitch and roll zeroed). dsrc `feature/atmos-ship-level-on-ground` (compiles, untested). |
+| 2026-10-17 | Added P16: POB pilot seat never granted programmed droid commands (empty Astromech tab on the YT-1300). dsrc `feature/pob-pilot-droid-commands` (compiles, untested). |
