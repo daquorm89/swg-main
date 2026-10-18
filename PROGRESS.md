@@ -566,6 +566,8 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 **Update 2 (2026-10-17):** after sitting in the operations seat the programs are granted and show in the pilot seat too, but running one gives "you cannot cmd_n:[droid] while piloting a ship". Cause: `command_table_space.tab` rows `droid` and `droidcommand_turretdefense` have `S:pilotingPobShip=0` (denied) and only `S:shipOperations=1` (vanilla design: POB droid commands from the operations seat). Fix: dsrc `feature/pob-pilot-droid-command-state` (`0e96d2774`) sets `S:pilotingPobShip=1` on both rows. Needs a command table rebuild on server AND client data. Still open: the pilot seat grant itself (`grantPobPilotDroidCommands` log line) not confirmed.
 
+**Update 3 (2026-10-17):** pilot-seat droid commands confirmed working in game. Turret Defense tuning: dsrc `feature/turret-defense-arc-hull-duration` changes `library/space_turret_defense.java` (compiles, untested): (1) 180 degree arcs: weapon 0 (upper turret) only fires at targets above the hull plane (ship-local y >= 0), weapon 1 (lower) only below, so turrets no longer shoot through the player ship; (2) `fireShipTurretServer` now passes `space_combat.SHIP` instead of component 0 (reactor): the reactor-only hits disabled ships but could not pass damage to the hull; (3) duration 45 -> 120 s (`DURATION_SEC`). Per-turret target choice from look-at target then attackers. Unverified: the arc is a hemisphere about the hull plane, not the real mount hardpoint.
+
 ---
 
 ## Completed projects
