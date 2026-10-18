@@ -568,6 +568,8 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 **Update 3 (2026-10-17):** pilot-seat droid commands confirmed working in game. Turret Defense tuning: dsrc `feature/turret-defense-arc-hull-duration` changes `library/space_turret_defense.java` (compiles, untested): (1) 180 degree arcs: weapon 0 (upper turret) only fires at targets above the hull plane (ship-local y >= 0), weapon 1 (lower) only below, so turrets no longer shoot through the player ship; (2) `fireShipTurretServer` now passes `space_combat.SHIP` instead of component 0 (reactor): the reactor-only hits disabled ships but could not pass damage to the hull; (3) duration 45 -> 120 s (`DURATION_SEC`). Per-turret target choice from look-at target then attackers. Unverified: the arc is a hemisphere about the hull plane, not the real mount hardpoint.
 
+**Update 4 (2026-10-17):** Turret Defense confirmed working well. Balance drawback added on the same dsrc branch (`feature/turret-defense-arc-hull-duration`): activation sets the ship capacitor to 0 ("power rerouted to the AI gunners") and, with `HOLD_CAPACITOR_DRAINED = true`, the 1.5 s tick keeps it at 0 until the program ends (120 s). Compiles, untested. Tuning knobs: `HOLD_CAPACITOR_DRAINED`, `DURATION_SEC`. Not handled: if the player leaves the ship mid-program the hold just stops (normal recharge resumes).
+
 ---
 
 ## Completed projects
