@@ -570,6 +570,8 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 **Update 4 (2026-10-17):** Turret Defense confirmed working well. Balance drawback added on the same dsrc branch (`feature/turret-defense-arc-hull-duration`): activation sets the ship capacitor to 0 ("power rerouted to the AI gunners") and, with `HOLD_CAPACITOR_DRAINED = true`, the 1.5 s tick keeps it at 0 until the program ends (120 s). Compiles, untested. Tuning knobs: `HOLD_CAPACITOR_DRAINED`, `DURATION_SEC`. Not handled: if the player leaves the ship mid-program the hold just stops (normal recharge resumes).
 
+**Update 5 (2026-10-17):** capacitor drawback revised (same dsrc branch): activation drains the capacitor ONCE and limits its maximum to `CAPACITOR_MAX_FRACTION` (0.5) of normal for the program duration, so some charge remains for firing. Original max is stored in ship objvar `turretDef.origCapMax` and restored on expiry, on leaving the ship, or if the player object is gone. Replaces the per-tick hold. Compiles, untested. Known gap: if the server restarts mid-program the objvar remains and the reduced max is not restored until the next Turret Defense run ends; a ship-load restore hook is not implemented.
+
 ---
 
 ## Completed projects
