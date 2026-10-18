@@ -572,6 +572,8 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 **Update 5 (2026-10-17):** capacitor drawback revised (same dsrc branch): activation drains the capacitor ONCE and limits its maximum to `CAPACITOR_MAX_FRACTION` (0.5) of normal for the program duration, so some charge remains for firing. Original max is stored in ship objvar `turretDef.origCapMax` and restored on expiry, on leaving the ship, or if the player object is gone. Replaces the per-tick hold. Compiles, untested. Restart safety: `combat_ship.OnInitialize` calls `space_turret_defense.restorePower`, so a reduced max left over after a server restart is restored when the ship loads (untested).
 
+**Update 6 (2026-10-17):** in-game: halved max made the capacitor bar look full. Changed (same dsrc branch): maximum is no longer modified; activation empties the capacitor once and a 0.25 s `turretDefenseCapTick` (new handler in `combat_ship_player.java`) clamps current to `CAPACITOR_MAX_FRACTION` (0.5) of the real max until the program ends, so the bar shows the full capacity with only half usable. `restorePower` and the `combat_ship.OnInitialize` hook remain as legacy cleanup for ships left with a halved max by the previous build (start also calls it). Targeting: the pilot's target is now read with `getLookAtTarget(ship)` (player as fallback) and checked with `pvpCanAttack(ship, target)`, so a selected hostile is engaged even if it has not attacked yet. Compiles, untested. Caveat: up to ~0.25 s of recharge can show between clamps.
+
 ---
 
 ## Completed projects
