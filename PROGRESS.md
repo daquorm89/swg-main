@@ -578,6 +578,22 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 **Update 8 (2026-10-17):** Turret Defense mining lasers. dsrc `feature/turret-defense-mining-lasers` (`library/space_turret_defense.java`, compiles, untested): weapon slots whose component is a mining laser (`getShipComponentDescriptorWeaponIsMining`) now auto-target mining asteroids and chunks (`GOT_ship_mining_asteroid_static` / `_dynamic`) instead of hostile ships: the pilot's selected target if it is one, otherwise the nearest within the weapon range and the turret's 180 degree arc (`pickMiningTarget`). The hit is processed by the existing `space_mining` scripts' `OnShipWasHit`, which also require the pilot to have Episode 3. Tractor beams, missiles and countermeasures are still skipped. The turret tick now runs even with no hostiles so mining lasers fire on their own. Known limitations: attacker list includes any ship merely targeting us (friendly lock can draw fire); unverified that `fireShipTurretServer` on a mining laser slot yields hits the mining scripts accept.
 
+### P17 — POB ship certifications: required by the ships, granted by nothing
+
+**Goal:** Every player POB ship whose template requires a certification command can actually be flown by a player who earns the matching master pilot skill. Ships with no faction allegiance are granted by all three master pilot skills.
+
+**Finding (2026-10-19, static code audit, not yet in game):** each ship's required cert is `certificationsRequired` in `~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/object/ship/player/shared_player_<ship>.tpf`, and it is checked with `CreatureObject::hasCertificationsForItem` (`hasCommand`). Only YT-1300, Decimator and Nova Courier (YKL-37R) certs were granted (by `pilot_neutral_master`, `pilot_imperial_navy_master`, `pilot_rebel_navy_master` in `~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/skill/skills.tab`, column `COMMANDS`). Five others were required but granted by nothing in dsrc: `cert_starships_yt2400`, `cert_starships_y8_mining_ship`, `cert_starships_gunship_imperial`, `cert_starships_gunship_rebel`, `cert_starships_gunship_neutral`. The Sorosuub Space Yacht template requires no cert, so there is nothing to grant.
+
+**Primary paths:** `dsrc` -> `sku.0/sys.shared/compiled/game/datatables/skill/skills.tab`
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P17.1 | Audit all 9 player POB ships: required cert vs which skill grants it | [x] |
+| P17.2 | `skills.tab`: gunship cert to its faction master (rebel / imperial / neutral = Black Sun Transport), `cert_starships_yt2400` + `cert_starships_y8_mining_ship` to all three masters. dsrc branch `feature/pob-ship-certs`, commit `7e99235a4` (code only, not compiled) | [~] |
+| P17.3 | Merge dsrc PR, bump `swg-main` dsrc pin, compile `skills.tab` with DataTableTool and copy the `.iff` to every copy (`data/...sys.shared`, `serverdata/...`), restart GameServer + client | [ ] |
+| P17.4 | In-game: skills grant commands when the skill is granted, so characters that already hold a master skill likely need revoke + regrant (`/revokeSkill` then `/grantSkill`) to receive the new certs (to verify). Then confirm each of the 8 ships can be boarded and flown | [ ] |
+| P17.5 | Decide: Sorosuub Space Yacht stays cert-free, or gets a `certificationsRequired` (shared template, client change) | [ ] |
+
 ---
 
 ## Completed projects
@@ -665,3 +681,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-17 | P12.12: POB ship erratic in atmosphere because interior items counted as obstacles in the client obstacle probe. client-tools `feature/atmos-pob-ignore-interior-objects` (code only, untested). |
 | 2026-10-17 | P12.13: ships placed on the ground by Call Ship / Exit Ship are now levelled (yaw kept, pitch and roll zeroed). dsrc `feature/atmos-ship-level-on-ground` (compiles, untested). |
 | 2026-10-17 | Added P16: POB pilot seat never granted programmed droid commands (empty Astromech tab on the YT-1300). dsrc `feature/pob-pilot-droid-commands` (compiles, untested). |
+| 2026-10-19 | Added P17: POB ship certs (YT-2400, Y-8, 3 gunships) were required but granted by nothing; added to master pilot skills. dsrc branch `feature/pob-ship-certs` (code only). |
