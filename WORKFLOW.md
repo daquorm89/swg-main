@@ -112,6 +112,15 @@ git reset --hard origin/master
 
 **Atmospheric flight / other long-lived `dsrc` features:** keep them on their own `dsrc` feature branch and merge into `dsrc` `master` via PR when ready. Do **not** pin the runnable server’s daily `dsrc` to a divergent feature tip unless you are actively developing only that feature and accept missing master content.
 
+### 2.2.2 Tree-wipe guards (mandatory; added after the 2026-10-21 serverdata wipe)
+
+A bad serverdata commit once deleted 125,518 files and the game servers died at startup. These guards exist so that can never reach the server again.
+
+1. **Install the pre-push hook** in every clone (sandbox AND server) after cloning: `~/repos/swg-main/utils/install_git_guards.sh`. It blocks any push that deletes more than 25 files, shrinks the tree by more than 10%, or drops a sentinel file (e.g. `appearance/defaultappearance.apt`). Override only for a deliberate mass deletion: `GUARD_ALLOW_DELETIONS=1 git push ...`.
+2. **Server: never run `git reset --hard origin/master` in `serverdata` or `dsrc` directly.** Use `~/repos/swg-main/utils/safe_data_update.sh serverdata` (or `dsrc`). It refuses to reset if `origin/master` is >10% smaller than the current tree or lacks a sentinel file.
+3. **CI**: `serverdata` and `dsrc` run `.github/workflows/guard-tree-wipe.yml` on every PR to master. **Never merge a PR whose `guard-tree-wipe` check is red.**
+4. **Agents**: before every push in a submodule run `git show --stat HEAD | tail -3` and `git ls-tree -r --name-only HEAD | wc -l` (must equal the count on `HEAD~1` plus/minus the files you meant to change). Never build commits with `commit-tree`, `read-tree --empty` or a custom `GIT_INDEX_FILE`. Never `git add -A` in the parent without checking `git status` for unintended submodule pin changes.
+
 ### 2.3 Server vs GitHub
 
 | Location | Role |
