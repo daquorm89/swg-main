@@ -139,6 +139,7 @@ cd dsrc && git fetch origin && git checkout master && git reset --hard origin/ma
 - Confirm **which subsystem** is in scope (combat, skills, commands, loot, etc.).
 - Search existing code/data before adding helpers.
 - Prefer small, testable PRs with in-game smoke tests listed in the PR body.
+- **Commit often and keep commits small** (see §2.5 rule 0): session caps can cut a session off without warning, so push after every logical step.
 - Update this `WORKFLOW.md` when introducing a new standing rule or completed phase.
 - **Commands handed to the user must never open a pager or prompt.** Always write `git --no-pager log ...`, `git --no-pager diff ...`, `git --no-pager show ...` (or avoid them), never bare `git log` / `git diff` / `git show`, and never commands that open an editor (`git commit` without `-m`, `git rebase -i`, `git merge` without `--no-edit`). Command blocks must be copy-paste runnable top to bottom without interaction. Prefer not to include verification-only lines at all unless the user asks.
 
@@ -148,6 +149,7 @@ The AI sandbox is **temporary**. If a session is interrupted, everything not pus
 
 **Checkpoint rules**
 
+0. **Commit often, keep commits small.** Session and usage caps can end an AI session at any moment, and anything uncommitted or unpushed is lost. Commit after every single logical change (one file, one method, one table, one string batch) and push right after, rather than batching a whole feature into one big commit. A commit should be small enough that losing the next one costs minutes, not hours. Never carry more than one unpushed commit while working. Do not wait for compile or test results to commit a coherent step: commit it as `WIP:` and fix forward.
 1. **Push early, push often.** Commit and push a feature branch after each logical stage, not at the end. Typical stages: (a) datatable rows, (b) strings, (c) library/script code, (d) hooks in existing scripts, (e) PROGRESS.md update. Unfinished work is fine on a feature branch; label it `WIP:` in the commit message.
 2. **Submodules first.** Push the branch in each changed submodule (`dsrc`, `serverdata`, ...) before or together with the parent. Work that only exists in a submodule working tree is not saved until that submodule's branch is pushed.
 3. **Use the same branch name in every repo touched** (e.g. `feature/space-wingmen` in both `dsrc` and `serverdata`), so a later session can find all the pieces by name.
