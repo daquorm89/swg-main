@@ -698,6 +698,7 @@ Only if `stationapi` sources changed — use that project’s narrow build (or `
 8c. Rebasing `swg-main` feature branches onto `master` without intent; on conflict use `git rebase --abort` unless you meant to integrate that feature.  
 8d. Leaving work unpushed in the AI sandbox — an interrupted session loses it. Push a feature branch (parent **and** submodules) after each stage; see §2.5.  
 9. Inventing git author identities — always `daquorm89 <douweheuvel@gmail.com>`.  
+9b. **Pushing a submodule commit without checking its file count.** A `serverdata` commit built from an empty/partial index deleted 125,518 files when merged (2026-10-21, `6eaca8499`), and the game servers then died at startup with `appearance/defaultappearance.apt could not be found`. Before pushing ANY commit in `serverdata`, `dsrc` or `src`, run `git show --stat --format=%h HEAD | tail -3` and confirm it lists only the files you meant to change (no mass `delete`), and that `git ls-tree -r --name-only HEAD | wc -l` equals the same count on `HEAD~1`. Never create these commits with `git commit-tree`, `read-tree --empty` or a fresh `GIT_INDEX_FILE`.  
 10. Large C++ changes without a rollback plan.  
 11. Editing `.cpp`/`.h` but only rebuilding Java — run `make … serverGame` and `SwgGameServer` in the CMake dir (`build/`), then restart GameServer.  
 12. Using full `ant compile` / `ant compile_src` for a one-file change — wasteful and unnecessary when narrow targets exist.  
