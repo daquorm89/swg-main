@@ -604,6 +604,37 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ---
 
+### P18 — Stationed droids: "Set Loose" a datapad droid as an autonomous NPC (stand / wander / guard)
+
+**Goal:** From a called-out droid's radial menu the owner can **Set Loose** the droid: it stops being a follower pet, frees its datapad slot, is persisted in the world where it stands, and runs an owner-chosen mode (**Stand Here**, **Wander**, **Guard**). **Pick Up** returns it to the datapad exactly as it was. Intended use: interactive decoration / guards for houses.
+
+**Scope decisions (user, 2026-10-20/21):** programmable = the owner sets its state (stand, wander, guard first). Later ideas, not built: patrol routes (reuse `pet.patrolPoints`), module-based orders (barker, entertainer, ...). Unanswered questions, defaults taken: pick-up by owner only; guard fights hostile creatures; max 10 loose droids per player; droids in ships/POB blocked.
+
+**Key finding:** a droid's inventory, datapad (program chips), power level and stored damage live on its **pet control device (PCD)**, not on the droid creature. The PCD is therefore never destroyed: while loose it is **parked in the droid's own inventory** (unused for droid pets) with `ai.pet_control_device` / `ai.pcd_ping_response` detached (`ai.pet_control_device.OnTransferred` destroys the linked droid whenever the PCD moves). The droid is persisted first (`ServerObject::persist` recurses into children), then the PCD is parked, then `ai.pet_ping` + `ai.pet` are detached and `ai.stationed_droid` attached. A failed park rolls the droid back into the datapad.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P18.1 | Feasibility study (pet lifecycle, PCD contents, persistence, AI hooks) | [x] |
+| P18.2 | `library/stationed_droid.java`: gate, per-player registry, setLoose, pickUp, rescuePcd, setMode/applyMode | [~] (written, compiles, untested) |
+| P18.3 | `ai/stationed_droid.java`: radial menu, guard scan + defence of owner, return-to-post, incap recovery, PCD rescue on destroy | [~] (written, compiles, untested) |
+| P18.4 | `ai/pet.java`: Set Loose entry (`SERVER_MENU8`) in the droid options submenu | [~] (written, compiles, untested) |
+| P18.5 | Strings: 15 `stationed_*` keys appended to `serverdata/string/en/pet/pet_menu.stf` (tool: `tools/stf_tool.py`); deploy to client `string/en/pet/pet_menu.stf` too | [~] (written, original 206 entries verified unchanged) |
+| P18.6 | Merge dsrc + serverdata PRs, bump swg-main pins, deploy, restart GameServer, full client restart | [ ] |
+| P18.7 | In-game smoke tests (below) | [ ] |
+| P18.8 | Decide/enable droids in ships and POB (`ALLOW_IN_SHIPS`, currently false) after testing what ship pack/unpack does to a persisted NPC | [ ] |
+
+**Implementation status (2026-10-21) - code only, compiles with javac against the dsrc sourcepath, NOT deployed or tested in game**
+
+- Branch `feature/stationed-droids` in three repos: `dsrc` (head `0ed22f413`, 6 commits: library x4, ai script, pet.java hook), `serverdata` (`bb5c43535`, strings), `swg-main` (this file + `tools/stf_tool.py`).
+- Compare: https://github.com/daquorm89/dsrc/compare/master...feature/stationed-droids , https://github.com/daquorm89/serverdata/compare/master...feature/stationed-droids , https://github.com/daquorm89/swg-main/compare/master...feature/stationed-droids
+- Deploy: `./utils/build_java_single.sh` for `library/stationed_droid.java`, `ai/stationed_droid.java`, `ai/pet.java` (all under `dsrc/sku.0/sys.server/compiled/game/script/`); copy `serverdata/string/en/pet/pet_menu.stf` to the server string path and the client; restart GameServer, full client restart. No tables, no templates, no C++.
+- Smoke tests: (1) call a droid out, radial > Droid Options > Set Loose: message, droid stays, datapad slot freed. (2) Stand / Wander / Guard each behave; Guard: aggressive creature walks up, droid engages, then returns to post. (3) Open storage and datapad from the loose droid's radial: contents intact. (4) Pick Up: droid vanishes, PCD back in datapad, Call works, chips/items/damage preserved. (5) Restart GameServer with a loose droid: it is still there with the same mode. (6) Incapacitate a loose droid: recovers after ~45 s. (7) 11th droid is refused. (8) Another player sees no owner menu. (9) Kill/destroy a loose droid (`/destroy`): PCD must reappear in the owner's datapad.
+- **Unverified, highest risk first:** (a) `putIn(pcd, droidInventory)` accepted by the engine (volume / arrangement of an intangible in a creature inventory), rollback exists if refused; (b) a persisted AI creature restores its mode and master after restart (`OnInitialize` re-applies both); (c) `pvpCanAttack` / `aiIsAggressive` pick sensible guard targets; (d) a loose droid killed while its owner is offline loses its PCD (owner datapad not loaded, `rescuePcd` logs and gives up).
+- Known limits: no power drain while loose; loose droids do not count against droid-slot limits; the registry (`stationed.droids` on the player) only shrinks on pick up or droid destruction; if the droid was the commanding droid, setting it loose recalls the linked army (existing `removeActiveDroid` behaviour).
+- Revert: remove the `SERVER_MENU8` lines in `ai/pet.java`; existing loose droids can still be picked up through their own radial menu, so do not delete the two new scripts while any are out.
+
+---
+
 ## Completed projects
 
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
@@ -691,3 +722,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-17 | Added P16: POB pilot seat never granted programmed droid commands (empty Astromech tab on the YT-1300). dsrc `feature/pob-pilot-droid-commands` (compiles, untested). |
 | 2026-10-19 | Added P17: POB ship certs (YT-2400, Y-8, 3 gunships) were required but granted by nothing; added to master pilot skills. dsrc branch `feature/pob-ship-certs` (code only). |
 | 2026-10-20 | P16: POB droid commands re-granted on unpack, refcount-safe sync, refresh on equip/program add; 24 pilot maneuvers allowed in POB pilot seat. dsrc `feature/pob-droid-commands-sync-and-maneuvers` (compiles, untested). |
+| 2026-10-21 | Added P18: Set Loose / Pick Up for datapad droids (stand, wander, guard). dsrc + serverdata + swg-main `feature/stationed-droids` (compiles, untested). |
