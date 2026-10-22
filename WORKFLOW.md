@@ -145,6 +145,16 @@ cd dsrc && git fetch origin && git checkout master && git reset --hard origin/ma
 - Update this `WORKFLOW.md` when introducing a new standing rule or completed phase.
 - **Commands handed to the user must never open a pager or prompt.** Always write `git --no-pager log ...`, `git --no-pager diff ...`, `git --no-pager show ...` (or avoid them), never bare `git log` / `git diff` / `git show`, and never commands that open an editor (`git commit` without `-m`, `git rebase -i`, `git merge` without `--no-edit`). Command blocks must be copy-paste runnable top to bottom without interaction. Prefer not to include verification-only lines at all unless the user asks.
 
+### 2.4.1 Deploying Java changes: prove the build is live (mandatory)
+
+A silent failed build looks exactly like a bug that is still there (2026-10-22: `utils/build_java_single.sh` was a 0-byte file on the server, every rebuild did nothing, and a whole test round ran on old classes). Rules:
+
+- Build with `./utils/build_java_checked.sh <files>` (from `~/repos/swg-main`). It fails loudly if javac errors, if the source is missing, or if the `.class` is not newer than its source, and it warns when `build_java_single.sh` is empty.
+- Restart the GameServer after every Java build (classes load at startup).
+- Verify with a literal string from the new code, always with `-F`: `grep -c -a -F "some new string" <path to .class>` must print above 0.
+- Scripts that print debug text carry a build tag (e.g. `stationed_droid.BUILD_TAG` shows as `[droid P18.14-1]`). Bump the tag on every change; a test report whose lines show the old or no tag was run on the wrong build.
+- AI agents: never state that something is deployed or fixed on the basis of a sandbox compile. Say "compiles in the sandbox, not verified on the server" until the owner shows a verified build tag or log line.
+
 ### 2.5 Checkpointing and resuming after an interruption (AI agents)
 
 The AI sandbox is **temporary**. If a session is interrupted, everything not pushed to GitHub is lost (this happened during P11: a full implementation was written locally, never pushed, and had to be rebuilt from a chat summary). Treat unpushed work as non-existent.
