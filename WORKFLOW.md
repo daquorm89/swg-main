@@ -62,6 +62,7 @@ Restore **Pre-CU skill-based professions and combat presentation** on top of an 
   Use: `https://github.com/daquorm89/<repo>/pull/new/<branch>`  
   or: `https://github.com/daquorm89/<repo>/compare/master...<branch>`
 - **Merge order:** merge the submodule repo first (e.g. `dsrc`), then parent `swg-main` if the pointer must move.
+- **ALWAYS give PR links (mandatory for AI agents).** Every time a branch is pushed, the same message must list one direct `https://github.com/daquorm89/<repo>/pull/new/<branch>` link per repo that was touched (`dsrc`, `serverdata`, `src`, `swg-main`, ...), in merge order (submodule first, then `swg-main`). Never say "merge the PR" without the links, and never assume the owner has already opened or merged anything: say which links are still to be merged and state that the server must not be treated as updated until they are. If nothing needs merging, say so explicitly.
 - **Do not commit tokens** into `.gitmodules` or history. Do not store PATs in project memory files.
 
 ### 2.2.1 Submodule pins — mandatory rules (prevent silent rollbacks)
@@ -139,6 +140,7 @@ cd dsrc && git fetch origin && git checkout master && git reset --hard origin/ma
 - Confirm **which subsystem** is in scope (combat, skills, commands, loot, etc.).
 - Search existing code/data before adding helpers.
 - Prefer small, testable PRs with in-game smoke tests listed in the PR body.
+- **Always end a push with the PR links** (see §2.2: one `pull/new` link per touched repo, merge order stated).
 - **Commit often and keep commits small** (see §2.5 rule 0): session caps can cut a session off without warning, so push after every logical step.
 - Update this `WORKFLOW.md` when introducing a new standing rule or completed phase.
 - **Commands handed to the user must never open a pager or prompt.** Always write `git --no-pager log ...`, `git --no-pager diff ...`, `git --no-pager show ...` (or avoid them), never bare `git log` / `git diff` / `git show`, and never commands that open an editor (`git commit` without `-m`, `git rebase -i`, `git merge` without `--no-edit`). Command blocks must be copy-paste runnable top to bottom without interaction. Prefer not to include verification-only lines at all unless the user asks.
