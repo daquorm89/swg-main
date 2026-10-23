@@ -675,6 +675,24 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ## Completed projects
 
+### P19 — No combat-level requirements on any item (armor, weapons, static items, consumables)
+
+Owner 2026-10-23: weapons no longer have a level requirement (dsrc `612202d6a`, template weapons only) but armor still does; "no level requirements for anything". The server C++ has no level gate; the client only greys out items that list the attribute `healing_combat_level_required` (`ClientObjectUsabilityManager::canUse`), `canWear` is species/gender only.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P19.1 | One switch `library/static_item.NO_LEVEL_REQUIREMENTS = true`. `static_item.validateLevelRequired` (both overloads) and `validateLevelRequiredForWornEffect` return true (covers `utils` equip checks, `static_item_base` equip block, static item worn effects, buff/full-heal/skillmod/beast click items, faction perk comlink). Separate gates switched off: `item/armor/dynamic_armor.java` (OnAboutToBeTransferred), `library/combat.java` weapon cert gate for DYNAMIC and STATIC weapons (the Sep 19 commit only covered template weapons), `item/medicine/stimpack.java` + `stimpack_crafted.java` use check. "Combat level required" lines hidden from examine (`static_item` 3 display blocks, `dynamic_armor`, `static_item_base`, both stimpacks, `crafting_weapon_component_attribute`) so the client does not grey items out. Skill requirements untouched. dsrc `feature/no-level-requirements` (`824e71142`). Scripts to build: `library/static_item`, `library/combat`, `item/armor/dynamic_armor`, `item/static_item_base`, `item/medicine/stimpack`, `item/medicine/stimpack_crafted`, `systems/crafting/weapon/component/crafting_weapon_component_attribute` (javac inlines the constant: rebuild all seven if the switch is ever changed) | [~] compiles, untested in game |
+| P19.2 | Smoke: equip loot armor / static armor above own level; use stimpack above level; examine armor shows no combat level line; weapons unchanged | [ ] |
+
+### P20 — Mounted free-targeted heavy (area-of-effect) weapons do not work (reported 2026-10-23)
+
+Owner 2026-10-23: while mounted, normal weapons are fine but free targeting (no auto-aim, ground reticle) with heavy area-of-effect weapons "isn't working anymore". Not reproduced, no log. Context: client P15.10 (merged, client-tools #39) made the reticle update while riding and send location params like on foot; vehicle riders (#42) fixed. Read-through of the server path: `combatStandardAction` parses `params` (`x y z cellId [x y z]`, 7+ tokens) into `targetLoc`; for ground-targeting weapons `getCombatDefenders` must find defenders around `actionData.targetLoc`, then `isInAttackRange` and, for non-special shots, `canSee(attacker, targetLoc)` (`LineOfSightCache::checkLOS(object, location)` starts from `getFirstParentInWorld` = the mount); the client only sends the location when `ReticleManager::getReticleCurrentlyValid()` (ray hit and in weapon range). No gate for mounted riders found by reading, so a diagnostic was added instead of a guess.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P20.1 | TEMPORARY diagnostic in `systems/combat/combat_base.java` (dsrc `feature/mounted-heavy-free-target-diag`, `08f1001d6`, includes the P19.1 commit): for a MOUNTED player firing a ground-targeting weapon, chat lines `MOUNTHEAVY: action=.. params=[..] target=.. parsedLoc=.. autoAim=.. locationOk=.. special=..` and `MOUNTHEAVY: stopped: no valid targets / isInAttackRange failed / line of sight failed`. Normal weapons and riders on foot are silent. Switch `combat_base.MOUNT_HEAVY_DEBUG`. Script to build: `systems/combat/combat_base`. No MOUNTHEAVY line at all when firing = the client never sent the command (client-side refusal or reticle invalid) | [~] diagnostic only |
+| P20.2 | Owner test: mounted, heavy weapon, auto-aim OFF, aim the reticle at ground/creature, fire; paste the MOUNTHEAVY lines (or note that there were none) and what is seen (reticle visible? animation? damage? message?). Then fix the gate that fires | [ ] |
+
 ### P8 — client-tools: fix startup access violation in Transceiver message dispatch (completed 2026-08-15)
 
 **Repo:** [daquorm89/client-tools](https://github.com/daquorm89/client-tools) (see its own `WORKFLOW.md`)
