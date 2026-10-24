@@ -146,6 +146,7 @@ cd dsrc && git fetch origin && git checkout master && git reset --hard origin/ma
 - **Commit often and keep commits small** (see §2.5 rule 0): session caps can cut a session off without warning, so push after every logical step.
 - Update this `WORKFLOW.md` when introducing a new standing rule or completed phase.
 - **Commands handed to the user must never open a pager or prompt.** Always write `git --no-pager log ...`, `git --no-pager diff ...`, `git --no-pager show ...` (or avoid them), never bare `git log` / `git diff` / `git show`, and never commands that open an editor (`git commit` without `-m`, `git rebase -i`, `git merge` without `--no-edit`). Command blocks must be copy-paste runnable top to bottom without interaction. Prefer not to include verification-only lines at all unless the user asks.
+- **The Windows client machine uses PowerShell, not Command Prompt (owner, 2026-10-24).** Give client commands as ```powershell blocks: `Set-Location "E:\..."` (never `cd /d`, never `%VAR%`, no `&&` chaining, one command per line). The client is built and deployed from `main` only (see the merge-everything rule in §2.2), never from a feature branch.
 
 ### 2.4.1 Deploying Java changes: prove the build is live (mandatory)
 
@@ -754,11 +755,11 @@ Full SOP lives in **[client-tools `WORKFLOW.md` §6](https://github.com/daquorm8
 
 ### Implement on the Windows client machine
 
-```bat
-cd /d "E:\swg-source VM\SWGSource Client v3.0\client-tools"
+```powershell
+Set-Location "E:\swg-source VM\SWGSource Client v3.0\client-tools"
 git fetch origin
-git checkout feature/precu-skills-show-jedi-fs
-git pull origin feature/precu-skills-show-jedi-fs
+git checkout main
+git pull origin main
 ```
 
 1. Open `src\build\win32\swg.sln` in **Visual Studio 2013**
