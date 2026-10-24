@@ -715,6 +715,43 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ---
 
+### P22 — Pet ability training: spend earned ability slots and training points (owner request 2026-10-24)
+
+**Goal:** Creature pets earn "Ability Slots" and "Ability Points" as they level (shown on the datapad examine), but there was no way to spend them. Give Creature Handlers a way to spend them on abilities that actually do something.
+
+**Finding (static, 2026-10-24):** the CU-era pet ability system is still on the server. `pet_lib.grantPetGrowthXp` earns slots (`ai.petAbility.toBeEarned` -> `ai.petAbility.available`) and points (`ai.petAbility.trainingPts`, about (level+55)/8 per level) on the PCD, and `pet_lib.trainPetAbility(pet, crc)` does the whole purchase (Creature Handler, free slot, points, prerequisite, writes `ai.petAbility.abilityList`). Nothing calls it any more: the training window was removed (unused helpers `hasPrereq` / `buildPrereqList` in `ai/pet_master.java`). All UI strings still exist in `string/en/pet/pet_ability.stf` (`training_title`, `training_header`, ability names). Effects are applied on call by `pet_lib.initializeTrainedPetAbilities` and in `pet_lib.setCraftedPetStatsByGrowth`.
+
+**Effect audit of `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/datatables/pet/pet_ability.tab`:**
+
+| Ability family | Effect applied? | Offered |
+|----------------|-----------------|---------|
+| healthBoost, regenBoost | yes, max Health / Constitution on call | yes |
+| armorBoost | yes, `ai.combat.genProtectionBonus` read in `combat.java` | yes |
+| tauntBoost | yes, flat hate in `combat.java` | yes |
+| tauntReduction | was broken (10/20/30 used as a factor, hate went far negative); fixed to a percentage in `combat.java` | yes |
+| damageBoost, attackSpeedBoost | yes, pet weapon damage / speed | yes |
+| runSpeedBoost | buff `petRunSpeed_N`, movement permaboost 25/50/75 (assumed working, unverified) | yes |
+| toHitBoost, defenseBoost, lowHealthFrenzy, lowHealthDefense | no, script vars nobody reads | no |
+| critHitBoost, critSaveBoost | no, overwritten by the pet's own crit values | no |
+| shieldMaster, frenzy, defenseStance (triggered) | no, no command triggers them and the buff values are unread | no |
+| snare / pin / bleed / intimidate / stun / blind / knockdown / defenseBreak attacks | no, Java stubs only, no `command_table` / `combat_data` rows | no |
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P22.1 | `library/pet_training_lib.java`: radial "Train Pet Ability" (`SERVER_MENU9`) on a called-out creature pet for Creature Handlers; list of the next rank of every offered family with cost, free slots, points and known abilities; purchase through `pet_lib.trainPetAbility` | [~] compiles (javac 21), untested |
+| P22.2 | `ai/pet.java`: radial entry + SUI handler `handlePetAbilityTrainSelect` | [~] compiles, untested |
+| P22.3 | `library/combat.java`: tauntReduction as a percentage, clamped to 100 % | [~] compiles, untested |
+| P22.4 | Deploy + in-game test | [ ] |
+| P22.5 | Later, optional: make the "no effect" families work (to-hit / defence / crit need `combat.java` reads; triggered abilities need a pet command; action attacks need `command_table` + `combat_data` rows) | [ ] |
+
+**Implementation status (2026-10-24):** dsrc branch `feature/pet-ability-training` (3 commits). No tables, no strings, no client files (all labels already in `pet_ability.stf`). Deploy: `./utils/build_java_checked.sh dsrc/sku.0/sys.server/compiled/game/script/library/pet_training_lib.java dsrc/sku.0/sys.server/compiled/game/script/ai/pet.java dsrc/sku.0/sys.server/compiled/game/script/library/combat.java`, verify `grep -c -a -F "Store and call your pet again" ~/repos/swg-main/data/sku.0/sys.server/compiled/game/script/library/pet_training_lib.class` above 0, restart GameServer.
+
+**Smoke tests:** (1) Creature Handler calls a levelled creature pet: radial shows "Train Pet Ability"; a non-CH or a droid shows nothing. (2) The window lists rank 1 of each family with costs, slots and points. (3) Train an affordable one: points and slots drop (datapad examine), message "taught ... to your pet"; store + call: the effect shows (health on examine, damage range, run speed). (4) Rank 2 then appears instead of rank 1. (5) Unaffordable line: "not enough training points" message, nothing spent. (6) No free slot: "no training slots available".
+
+**Notes:** a higher rank replaces the lower one but still uses a slot (stock `trainPetAbility` behaviour, kept). The stock CU UI may have limited the list to abilities the handler learned from wild pets (`ch.petAbility.abilityList` on the player); not used here, every Creature Handler can train every offered family. Revert: remove the `SERVER_MENU9` blocks and `handlePetAbilityTrainSelect` in `ai/pet.java`; trained abilities stay on the PCDs and keep working.
+
+---
+
 ## Completed projects
 
 ### P19 — No combat-level requirements on any item (armor, weapons, static items, consumables)
