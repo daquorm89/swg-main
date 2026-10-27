@@ -753,6 +753,29 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ---
 
+### P23 — Cybernetics specialists missing in hospitals (reported 2026-10-27)
+
+**Goal:** The EP3 cybernetic engineers (install / remove / repair cybernetics) stand in the medical centers again.
+
+**Spawn chain (stock, verified by reading dsrc master `20fa2e3bb`):** buildout row of the hospital building with script `theme_park.dungeon.generic_spawner` and objvar `spawn_table` -> spawn table -> NPC template + conversation script, spawned in the cell `blueroom` at (26.8, 7.3, 0.2), yaw -89. Only THREE hospitals have one in stock data:
+
+| Hospital | Buildout row (dsrc) | Spawn table | NPC / script |
+|----------|---------------------|-------------|--------------|
+| Theed (Naboo) | `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/datatables/buildout/naboo/naboo_2_7_ws.tab` (object 1697358) | `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/datatables/spawning/ep3/ep3_theed_medical_center.tab` | `object/mobile/ep3/cyborg_engineer_naboo.iff`, `conversation.cyborg_install_naboo` |
+| Coronet (Corellia) | `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/datatables/buildout/corellia/corellia_4_2_ws.tab` (object 1855529) | `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/datatables/spawning/ep3/ep3_coronet_medical_center.tab` | `object/mobile/ep3/cyborg_engineer_corellia.iff`, `conversation.cyborg_install_corellia` |
+| Mos Entha (Tatooine) | `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/datatables/buildout/tatooine/tatooine_5_6_ws.tab` (object 1153580) | `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/datatables/spawning/ep3/ep3_mos_entha_medical_center.tab` | `object/mobile/ep3/cyborg_engineer_tatooine.iff`, `conversation.cyborg_install_tatooine` |
+
+**Static findings:** none of these files (nor `generic_spawner.java`, the NPC templates, `object/mobile/mobile.tpf`) changed since 2018-2019; no project commit touches the chain; `blueroom` exists in all three POBs (`mun_nboo/corl/tato_hospital_s01.pob`); `exe/linux` config has no `disableGenericSpawner`. `create.object` with an `.iff` name is a plain `createObject` (the 2026-08-25 baby change only affects `createCreature`). serverdata holds no `datatables/spawning/` folder: the spawn tables are read from the `data/` build tree. So no code cause found; most likely a runtime/build gap on the server (missing or stale compiled spawn table / buildout `.iff`, NPC template not in the CRC table or `object_templates` DB table), or the hospital checked is not one of the three above.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P23.1 | Static audit of the spawn chain (above) | [x] |
+| P23.2 | Server checks: compiled `.iff` files present, CRC table entry, `bad_spawner_data` log lines; confirm which hospital was checked | [ ] |
+| P23.3 | Fix the gap found in P23.2 (rebuild table / template / CRC + DB load) or, if wanted, add engineers to more hospitals (new spawn tables + buildout objvars: new scope, owner decision) | [ ] |
+| P23.4 | In-game: engineer stands in the blue room of Theed, Coronet and Mos Entha medical centers and the install conversation works | [ ] |
+
+---
+
 ## Completed projects
 
 ### P19 — No combat-level requirements on any item (armor, weapons, static items, consumables)
@@ -874,3 +897,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-22 | P18.13b: droids that already fell out of a POB hull are now stowed with the ship (post inside the hull counts), recovered on every call (not only when records exist) and by a 10 s watchdog in `ai.stationed_droid` (`recoverIfFallen`). dsrc `feature/stationed-droids-pob-robust` (compiles, untested). |
 | 2026-10-24 | Added P21: Pasture for creature pets (roam on their own, retrieve) and mating (adult male + female of a species within 20 m for 1 h give a baby, pastured for the female owner or wild). dsrc + serverdata + swg-main `feature/pet-pasture` (compiles, untested). |
 | 2026-10-24 | P21 revised before merge: pasture in POB ships (stow/restore like P18), growth while pastured, stat inheritance with modifier for tamed and bio-engineered pets, attackable but downed-not-killed. dsrc `feature/pet-pasture` tip `c7aee75e2` (compiles, untested). |
+| 2026-10-27 | Added P23: cybernetics specialists missing in hospitals; static audit finds no code/data change in the spawn chain, server-side checks pending. |
