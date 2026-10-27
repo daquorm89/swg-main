@@ -755,7 +755,7 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ### P23 — Cybernetics specialists missing in hospitals (reported 2026-10-27)
 
-**Goal:** The EP3 cybernetic engineers (install / remove / repair cybernetics) stand in the medical centers again.
+**Result (2026-10-27): not a bug, engineer present.** **Goal:** The EP3 cybernetic engineers (install / remove / repair cybernetics) stand in the medical centers again.
 
 **Spawn chain (stock, verified by reading dsrc master `20fa2e3bb`):** buildout row of the hospital building with script `theme_park.dungeon.generic_spawner` and objvar `spawn_table` -> spawn table -> NPC template + conversation script, spawned in the cell `blueroom` at (26.8, 7.3, 0.2), yaw -89. Only THREE hospitals have one in stock data:
 
@@ -770,9 +770,9 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 | ID | Sub-target | Status |
 |----|------------|--------|
 | P23.1 | Static audit of the spawn chain (above) | [x] |
-| P23.2 | Server checks: compiled `.iff` files present, CRC table entry, `bad_spawner_data` log lines; confirm which hospital was checked | [ ] |
-| P23.3 | Fix the gap found in P23.2 (rebuild table / template / CRC + DB load) or, if wanted, add engineers to more hospitals (new spawn tables + buildout objvars: new scope, owner decision) | [ ] |
-| P23.4 | In-game: engineer stands in the blue room of Theed, Coronet and Mos Entha medical centers and the install conversation works | [ ] |
+| P23.2 | Server checks (2026-10-27): spawn tables, NPC templates, CRC entries and buildout row all present; Theed hospital dump shows `spawned.spawnNumber_0=18387508103`, NPC `cyborg_engineer_naboo` in cell `blueroom` at (26.8, 7.25, 0.2) with `conversation.cyborg_install_naboo` | [x] |
+| P23.3 | No fix needed: no gap found. Owner: the engineer \"appeared now\", probably still loading/spawning when first checked (spawner starts 1 s after the building initializes; the client may also show NPCs in upper cells late). Adding engineers to more hospitals stays an open owner decision | [x] |
+| P23.4 | In-game: Theed engineer seen by owner 2026-10-27. Coronet / Mos Entha and the install conversation not separately checked | [~] |
 
 ---
 
