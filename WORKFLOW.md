@@ -600,9 +600,10 @@ cp -f "$SERVER/data/sku.0/sys.shared/compiled/game/object/weapon/ranged/vehicle/
 cp -f "$SERVER/data/sku.0/sys.shared/compiled/game/object/draft_schematic/vehicle/civilian/shared_walker_at_xt.iff" "$CLIENT/object/draft_schematic/vehicle/civilian/shared_walker_at_xt.iff"
 cp -f "$SERVER/data/sku.0/sys.shared/compiled/game/object/tangible/deed/vehicle_deed/shared_walker_at_xt_deed.iff" "$CLIENT/object/tangible/deed/vehicle_deed/shared_walker_at_xt_deed.iff"
 cp -f "$SERVER/serverdata/string/en/pet_deed.stf" "$CLIENT/string/en/pet_deed.stf"
+cp -f "$SERVER/serverdata/string/en/cybernetic_surgery.stf" "$CLIENT/string/en/cybernetic_surgery.stf"
 cp -f "$SERVER/data/sku.0/sys.client/built/game/misc/object_template_crc_string_table.iff" "$CLIENT/misc/object_template_crc_string_table.iff"
 
-ls -la "$CLIENT/datatables/combat/combat_data.iff" "$CLIENT/datatables/command/command_table.iff" "$CLIENT/string/en/pet_deed.stf" "$CLIENT/object/weapon/ranged/vehicle/shared_at_xt_vehicle_blaster.iff"
+ls -la "$CLIENT/datatables/combat/combat_data.iff" "$CLIENT/datatables/command/command_table.iff" "$CLIENT/string/en/pet_deed.stf" "$CLIENT/string/en/cybernetic_surgery.stf" "$CLIENT/object/weapon/ranged/vehicle/shared_at_xt_vehicle_blaster.iff"
 ```
 
 **Rules**
