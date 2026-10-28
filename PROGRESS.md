@@ -776,6 +776,45 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ---
 
+### P24 — Player cybernetic surgery: Doctor / Bio-Engineer implant cybernetics, skill-based success (owner request 2026-10-27)
+
+**Goal:** A Doctor or Bio-Engineer can implant a cybernetic part into another player, with a success chance based on skill. The hospital Cybernetic Specialists stay as the paid, guaranteed install / remove / repair.
+
+**Rules (agreed with owner 2026-10-27):**
+
+- **Who:** `science_doctor_novice` or `outdoors_bio_engineer_novice`.
+- **Skill:** higher of `healing_wound_treatment` and `bio_engineer_assembly`, plus a quarter of the lower, capped at 100.
+- **Chance:** `25 + 0.6 × skill + location bonus − part difficulty`, clamped 5–95 %. Part difficulty: hand 0, forearm 5, arm 10, legs 15, torso 20.
+- **Where (surgeon's position):** a building with objvar `healing.canhealwound` (hospitals, player medical centers), bonus +10; OR field surgery, which needs **both** a camp of power ≥ 4 (quality 4 / elite 5 / luxury 6 kit) **and** the surgeon's own called, powered droid with `medpower` ≥ 0.85 (medical module rating 7+) within 20 m, bonus +5. Anywhere else: not allowed, the message names what is missing.
+- **Flow:** surgeon radial on the patient → **Implant Cybernetic** (shown only when the patient carries a part) → the patient picks the part from their own inventory (consent) → the surgeon sees the chance and confirms → ~5 s surgery (`heal_other` animation) → roll. Range 6 m, no combat, both alive.
+- **Success:** same install as the engineer (`equip(item, patient)`, crafted parts bio-linked, install effect). XP to the surgeon: 150 × part size (hand 1 … torso 5), type `medical` (Doctor) or `crafting_bio_engineer_creature` (Bio-Engineer), whichever skill was higher.
+- **Failure:** part loses 10–25 % of max condition (repairable by the engineer), patient loses 20 % of health (never below 1).
+- All numbers are constants at the top of `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/library/cybernetic_surgery.java`. Log lines go to the `cyborg` CustomerServiceLog channel with build tag `[cybersurgery P24-1]`.
+
+**Implementation status (2026-10-28):** branch `feature/cybernetic-surgery` in `dsrc`, `serverdata`, `swg-main`. Compiles in the sandbox (javac 17 `--release 11` against `dsrc/build/data` classes); **not built or tested on the server yet.**
+
+| Repo | Commit | Content |
+|------|--------|---------|
+| serverdata | `7d559f3` | new `~/repos/swg-main/serverdata/string/en/cybernetic_surgery.stf` (`radial_implant` = "Implant Cybernetic") |
+| swg-main | `84169e1` | `~/repos/swg-main/tools/stf_tool.py`: `new` command (empty table), `add` works on an empty table. Regenerate the stf with: `python3 tools/stf_tool.py new /tmp/e.stf` then `python3 tools/stf_tool.py add /tmp/e.stf serverdata/string/en/cybernetic_surgery.stf "radial_implant=Implant Cybernetic"` |
+| dsrc | `9aefc64d6` | new `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/library/cybernetic_surgery.java` (rules, checks, chance, outcomes) |
+| dsrc | `83d06aea9` | new `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/cybernetic/cybernetic_surgery.java` (patient choice, surgeon confirm, timer handlers; attached on demand) |
+| dsrc | `3ccf91eda` | `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/player/base/base_player.java`: radial `SERVER_MENU7` on another player (free slot: base_player uses 1 and 9) |
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P24.1 | String table `cybernetic_surgery.stf` on server + client loose folder | [ ] |
+| P24.2 | Library + handler script + base_player hook built on the server (`build_java_checked.sh`) | [ ] |
+| P24.3 | Radial shows for a Doctor and a Bio-Engineer on a player who carries a part; not for others, not on yourself | [ ] |
+| P24.4 | Hospital: success installs the part (mods/commands work, crafted part bio-linked), XP granted | [ ] |
+| P24.5 | Failure: part condition drops, patient health drops, part stays in inventory | [ ] |
+| P24.6 | Field: camp power ≥ 4 + own medical droid (rating 7+) allowed; camp only / droid only / low camp / weak droid refused with the right message | [ ] |
+| P24.7 | Cancel paths: patient declines, surgeon cancels, walking away / combat during the 5 s → no change | [ ] |
+
+**Not verified / open:** whether the client shows a script radial entry on a healthy player (base_player only used it on dead/incapacitated players before); the Episode III check in `cybernetic_item` for non-s01 parts (a failed equip after a good roll gives a "would not attach" message and no damage).
+
+---
+
 ## Completed projects
 
 ### P19 — No combat-level requirements on any item (armor, weapons, static items, consumables)
@@ -898,3 +937,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-24 | Added P21: Pasture for creature pets (roam on their own, retrieve) and mating (adult male + female of a species within 20 m for 1 h give a baby, pastured for the female owner or wild). dsrc + serverdata + swg-main `feature/pet-pasture` (compiles, untested). |
 | 2026-10-24 | P21 revised before merge: pasture in POB ships (stow/restore like P18), growth while pastured, stat inheritance with modifier for tamed and bio-engineered pets, attackable but downed-not-killed. dsrc `feature/pet-pasture` tip `c7aee75e2` (compiles, untested). |
 | 2026-10-27 | Added P23: cybernetics specialists missing in hospitals; static audit finds no code/data change in the spawn chain, server-side checks pending. |
+| 2026-10-28 | Added P24: player cybernetic surgery (Doctor / Bio-Engineer), implemented on `feature/cybernetic-surgery` in dsrc, serverdata, swg-main; sandbox compile only. |
