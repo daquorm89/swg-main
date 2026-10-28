@@ -776,6 +776,67 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ---
 
+### P24 — Player cybernetic surgery: Doctor / Bio-Engineer implant cybernetics, skill-based success (owner request 2026-10-27)
+
+**Goal:** A Doctor or Bio-Engineer can implant a cybernetic part into another player, with a success chance based on skill. The hospital Cybernetic Specialists stay as the paid, guaranteed install / remove / repair.
+
+**Rules (agreed with owner 2026-10-27):**
+
+- **Who:** `science_doctor_novice` or `outdoors_bio_engineer_novice`.
+- **Skill:** higher of `healing_wound_treatment` and `bio_engineer_assembly`, plus a quarter of the lower, capped at 100.
+- **Chance:** `25 + 0.6 × skill + location bonus − part difficulty`, clamped 5–95 %. Part difficulty: hand 0, forearm 5, arm 10, legs 15, torso 20.
+- **Where (surgeon's position):** a building with objvar `healing.canhealwound` (hospitals, player medical centers), bonus +10; OR field surgery, which needs **both** a camp of power ≥ 4 (quality 4 / elite 5 / luxury 6 kit) **and** the surgeon's own called, powered droid with `medpower` ≥ 0.85 (medical module rating 7+) within 20 m, bonus +5. Anywhere else: not allowed, the message names what is missing.
+- **Flow:** surgeon radial on the patient → **Implant Cybernetic** (shown only when the patient carries a part) → the patient picks the part from their own inventory (consent) → the surgeon sees the chance and confirms → ~5 s surgery (`heal_other` animation) → roll. Range 6 m, no combat, both alive.
+- **Success:** same install as the engineer (`equip(item, patient)`, crafted parts bio-linked, install effect). XP to the surgeon: 150 × part size (hand 1 … torso 5), type `medical` (Doctor) or `crafting_bio_engineer_creature` (Bio-Engineer), whichever skill was higher.
+- **Failure (revised again 2026-10-28, owner: every part must be able to do full damage, only the odds differ):** part loses 10–25 % of max condition (repairable by the engineer). The patient is knocked out (normal incapacitation) with a size-dependent chance; otherwise loses 20–99 % health for **every** part, rolled as `20 + 79 × u^k` (u uniform 0–1) with a size-dependent skew `k`. Simulated odds (200k rolls):
+
+  | Part | k | Knockout | Median loss | Loss ≥ 60 % | Loss ≥ 80 % | Severe (≥ 60 % or KO) |
+  |------|---|----------|-------------|-------------|-------------|------------------------|
+  | Hand | 6.0 | 5 % | 21 % | 10 % | 4 % | 15 % |
+  | Forearm | 4.0 | 10 % | 24 % | 14 % | 6 % | 24 % |
+  | Arm | 2.5 | 15 % | 33 % | 20 % | 9 % | 35 % |
+  | Legs | 1.6 | 25 % | 46 % | 26 % | 12 % | 51 % |
+  | Torso | 1.0 | 35 % | 59 % | 32 % | 16 % | 67 % |
+
+  Constants: `FAIL_KNOCKOUT_CHANCE`, `FAIL_HEALTH_SKEW`, `FAIL_HEALTH_MIN_PCT` / `FAIL_HEALTH_MAX_PCT`.
+- **Severity link (2026-10-28, owner):** one roll 1–10000 decides success and, on failure, how badly: severity `f = (roll − chance×100) / (10000 − chance×100)`, 0 = barely missed, 1 = worst roll. The worst `FAIL_KNOCKOUT_CHANCE[size]` % of the failure range is a knockout; below it the health loss is `20 + 79 × g^k` with `g = f` rescaled over the non-knockout range; part condition loss is `10 + 15 × f` %. The per-part odds in the table above are unchanged (simulated at chance 40 and 85). Messages: "narrowly failed" (f < 0.34), "failed", "failed badly" (f ≥ 0.67), "botched" (knockout). Average health loss narrow / failed / badly: hand 20 / 22 / 54 %, arm 22 / 42 / 80 %, torso 40 / 80 % / always knockout.
+- **Skill weighting (2026-10-28, owner: daring operations by a novice much riskier than by a master):** severity becomes `f^m` with `m = 0.6 + skill / 30` (novice skill 5 → 0.77, skill 50 → 2.27, master 100 → 3.93). A master's failures are mostly narrow misses, a novice's lean toward bad; the worst roll is still full severity for everyone. Simulated per surgery (knockout / severe-or-knockout): novice in the field hand 4.3 % / 13 %, arm 15 % / 33 %, torso 37 % / 67 %; skill 50 in a hospital hand 0.8 % / 2.5 %, torso 9.6 % / 21 %; master in a hospital hand 0.08 % / 0.2 %, arm 0.6 % / 1.6 %, torso 2.6 % / 6 %. The surgeon's confirm window shows this surgery's real knockout risk, `(100 − chance) × (1 − (1 − KO/100)^(1/m))`. Constants `SEVERITY_EXP_BASE`, `SEVERITY_EXP_PER_SKILL`.
+  **Can be lethal (owner decision 2026-10-28):** a knockout of a patient who still has the `incapWeaken` buff (recovering from an earlier incap) kills them through the normal path (`base_player.OnIncapacitated` → `pclib.killPlayer`). Patient and surgeon both see a warning in their prompts when the patient is weakened. Self-surgery has no penalty (owner: fine as is).
+- **Self-surgery (2026-10-28):** allowed; the radial also shows on yourself. `SELF_PENALTY` on the chance, default 0.
+- All numbers are constants at the top of `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/library/cybernetic_surgery.java`. Log lines go to the `cyborg` CustomerServiceLog channel with build tag `[cybersurgery P24-6]`.
+
+**Implementation status (2026-10-28):** branch `feature/cybernetic-surgery` in `dsrc`, `serverdata`, `swg-main`. Compiles in the sandbox (javac 17 `--release 11` against `dsrc/build/data` classes); **not built or tested on the server yet.**
+
+| Repo | Commit | Content |
+|------|--------|---------|
+| serverdata | `7d559f3` | new `~/repos/swg-main/serverdata/string/en/cybernetic_surgery.stf` (`radial_implant` = "Implant Cybernetic") |
+| swg-main | `84169e1` | `~/repos/swg-main/tools/stf_tool.py`: `new` command (empty table), `add` works on an empty table. Regenerate the stf with: `python3 tools/stf_tool.py new /tmp/e.stf` then `python3 tools/stf_tool.py add /tmp/e.stf serverdata/string/en/cybernetic_surgery.stf "radial_implant=Implant Cybernetic"` |
+| dsrc | `9aefc64d6` | new `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/library/cybernetic_surgery.java` (rules, checks, chance, outcomes) |
+| dsrc | `83d06aea9` | new `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/cybernetic/cybernetic_surgery.java` (patient choice, surgeon confirm, timer handlers; attached on demand) |
+| dsrc | `3ccf91eda` | `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/player/base/base_player.java`: radial `SERVER_MENU7` on another player (free slot: base_player uses 1 and 9) |
+| dsrc | `587a23641` | library: size-based failure damage / knockout (never lethal), self-surgery, build tag `P24-2` |
+| dsrc | `807191a39` | base_player: radial also on yourself |
+| dsrc | `c51bdfd43` | handler script: no decline/cancel messages to yourself |
+| dsrc | `18ac6670e` | library: knockout of a weakened patient is lethal, warning in both prompts, build tag `P24-3` |
+| dsrc | `a1450ef63` + `652df7d9a` | library: 20–99 % health loss for every part, skewed by size (`a1450ef63` alone does not compile; `652df7d9a` fixes it), build tag `P24-4` |
+| dsrc | `59dd89652` | library: knockout and damage follow how badly the roll failed, build tag `P24-5` |
+| dsrc | `3351106d7`, `0ff53609c` | library: failure severity weighted by surgeon skill (build tag `P24-6`); confirm window shows the real knockout risk |
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P24.1 | String table `cybernetic_surgery.stf` on server + client loose folder | [ ] |
+| P24.2 | Library + handler script + base_player hook built on the server (`build_java_checked.sh`) | [ ] |
+| P24.3 | Radial shows for a Doctor and a Bio-Engineer on a player who carries a part; not for others, not on yourself | [ ] |
+| P24.4 | Hospital: success installs the part (mods/commands work, crafted part bio-linked), XP granted | [ ] |
+| P24.5 | Failure: part condition drops, part stays in inventory; patient loses 20–99 % health (small parts mostly low) or is knocked out and recovers normally; with `incapWeaken` active a knockout kills the patient (warning shown beforehand) | [ ] |
+| P24.8 | Self-surgery: radial on yourself, one pick + one confirm, single messages, success and failure both work | [ ] |
+| P24.6 | Field: camp power ≥ 4 + own medical droid (rating 7+) allowed; camp only / droid only / low camp / weak droid refused with the right message | [ ] |
+| P24.7 | Cancel paths: patient declines, surgeon cancels, walking away / combat during the 5 s → no change | [ ] |
+
+**Not verified / open:** whether the client shows a script radial entry on a healthy player (base_player only used it on dead/incapacitated players before); the Episode III check in `cybernetic_item` for non-s01 parts (a failed equip after a good roll gives a "would not attach" message and no damage).
+
+---
+
 ## Completed projects
 
 ### P19 — No combat-level requirements on any item (armor, weapons, static items, consumables)
@@ -898,3 +959,9 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-24 | Added P21: Pasture for creature pets (roam on their own, retrieve) and mating (adult male + female of a species within 20 m for 1 h give a baby, pastured for the female owner or wild). dsrc + serverdata + swg-main `feature/pet-pasture` (compiles, untested). |
 | 2026-10-24 | P21 revised before merge: pasture in POB ships (stow/restore like P18), growth while pastured, stat inheritance with modifier for tamed and bio-engineered pets, attackable but downed-not-killed. dsrc `feature/pet-pasture` tip `c7aee75e2` (compiles, untested). |
 | 2026-10-27 | Added P23: cybernetics specialists missing in hospitals; static audit finds no code/data change in the spawn chain, server-side checks pending. |
+| 2026-10-28 | P24: failure severity weighted by surgeon skill; confirm window shows the real knockout risk. |
+| 2026-10-28 | P24: knockout and damage now follow how badly the surgery roll failed. |
+| 2026-10-28 | P24: failure health loss 20–99 % for every part, skewed by part size. |
+| 2026-10-28 | P24: knockout of a weakened patient is now lethal (owner), warnings added. |
+| 2026-10-28 | P24 revised: size-based failure damage with knockout (never lethal), self-surgery allowed. |
+| 2026-10-28 | Added P24: player cybernetic surgery (Doctor / Bio-Engineer), implemented on `feature/cybernetic-surgery` in dsrc, serverdata, swg-main; sandbox compile only. |

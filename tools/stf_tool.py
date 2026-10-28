@@ -15,6 +15,7 @@ the untouched table re-serialises byte-for-byte before anything is written.
 Usage:
     stf_tool.py dump FILE.stf
     stf_tool.py add  FILE.stf OUT.stf KEY=TEXT [KEY=TEXT ...]
+    stf_tool.py new  OUT.stf            (writes an empty table; then use add)
 """
 import struct
 import sys
@@ -79,10 +80,11 @@ def main(argv):
             if not key or key in existing:
                 print('skip/duplicate key: %r' % key, file=sys.stderr)
                 return 1
-            new_id = max(next_id, max(ids) + 1)
+            new_id = max(next_id, max(ids, default=0) + 1)
             ids.add(new_id)
             next_id = new_id + 1
             # crc column: reuse the convention of the table (all entries share it or are 0)
+            # (an empty table gets 0xFFFFFFFF, as in stock tables such as ep3/cybernetic.stf)
             entries.append([new_id, 0xFFFFFFFF if all(e[1] == 0xFFFFFFFF for e in entries) else 0, text])
             names.append([new_id, key])
             existing.add(key)
@@ -92,6 +94,10 @@ def main(argv):
         parse(out)  # must parse again
         open(dst, 'wb').write(out)
         print('wrote %s (%d entries)' % (dst, len(entries)))
+        return 0
+    if len(argv) == 3 and argv[1] == 'new':
+        open(argv[2], 'wb').write(build(1, 1, [], []))
+        print('wrote empty table %s' % argv[2])
         return 0
     print(__doc__)
     return 2
