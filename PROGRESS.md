@@ -798,9 +798,9 @@ Smoke after rebuilding the client: pistol fired in several directions across the
   | Legs | 20–75 % | 25 % |
   | Torso | 20–90 % | 35 % |
 
-  Never lethal: a patient who already has the `incapWeaken` buff (from `base_player.OnIncapacitated`, where a second incap calls `pclib.killPlayer`) is left at 1 health instead of being knocked out.
+  **Can be lethal (owner decision 2026-10-28):** a knockout of a patient who still has the `incapWeaken` buff (recovering from an earlier incap) kills them through the normal path (`base_player.OnIncapacitated` → `pclib.killPlayer`). Patient and surgeon both see a warning in their prompts when the patient is weakened. Self-surgery has no penalty (owner: fine as is).
 - **Self-surgery (2026-10-28):** allowed; the radial also shows on yourself. `SELF_PENALTY` on the chance, default 0.
-- All numbers are constants at the top of `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/library/cybernetic_surgery.java`. Log lines go to the `cyborg` CustomerServiceLog channel with build tag `[cybersurgery P24-2]`.
+- All numbers are constants at the top of `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/library/cybernetic_surgery.java`. Log lines go to the `cyborg` CustomerServiceLog channel with build tag `[cybersurgery P24-3]`.
 
 **Implementation status (2026-10-28):** branch `feature/cybernetic-surgery` in `dsrc`, `serverdata`, `swg-main`. Compiles in the sandbox (javac 17 `--release 11` against `dsrc/build/data` classes); **not built or tested on the server yet.**
 
@@ -814,6 +814,7 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 | dsrc | `587a23641` | library: size-based failure damage / knockout (never lethal), self-surgery, build tag `P24-2` |
 | dsrc | `807191a39` | base_player: radial also on yourself |
 | dsrc | `c51bdfd43` | handler script: no decline/cancel messages to yourself |
+| dsrc | `18ac6670e` | library: knockout of a weakened patient is lethal, warning in both prompts, build tag `P24-3` |
 
 | ID | Sub-target | Status |
 |----|------------|--------|
@@ -821,7 +822,7 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 | P24.2 | Library + handler script + base_player hook built on the server (`build_java_checked.sh`) | [ ] |
 | P24.3 | Radial shows for a Doctor and a Bio-Engineer on a player who carries a part; not for others, not on yourself | [ ] |
 | P24.4 | Hospital: success installs the part (mods/commands work, crafted part bio-linked), XP granted | [ ] |
-| P24.5 | Failure: part condition drops, part stays in inventory; patient loses 20 %–size max health or is knocked out and recovers normally; with `incapWeaken` active the patient ends at 1 health, never dead | [ ] |
+| P24.5 | Failure: part condition drops, part stays in inventory; patient loses 20 %–size max health or is knocked out and recovers normally; with `incapWeaken` active a knockout kills the patient (warning shown beforehand) | [ ] |
 | P24.8 | Self-surgery: radial on yourself, one pick + one confirm, single messages, success and failure both work | [ ] |
 | P24.6 | Field: camp power ≥ 4 + own medical droid (rating 7+) allowed; camp only / droid only / low camp / weak droid refused with the right message | [ ] |
 | P24.7 | Cancel paths: patient declines, surgeon cancels, walking away / combat during the 5 s → no change | [ ] |
@@ -952,5 +953,6 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-24 | Added P21: Pasture for creature pets (roam on their own, retrieve) and mating (adult male + female of a species within 20 m for 1 h give a baby, pastured for the female owner or wild). dsrc + serverdata + swg-main `feature/pet-pasture` (compiles, untested). |
 | 2026-10-24 | P21 revised before merge: pasture in POB ships (stow/restore like P18), growth while pastured, stat inheritance with modifier for tamed and bio-engineered pets, attackable but downed-not-killed. dsrc `feature/pet-pasture` tip `c7aee75e2` (compiles, untested). |
 | 2026-10-27 | Added P23: cybernetics specialists missing in hospitals; static audit finds no code/data change in the spawn chain, server-side checks pending. |
+| 2026-10-28 | P24: knockout of a weakened patient is now lethal (owner), warnings added. |
 | 2026-10-28 | P24 revised: size-based failure damage with knockout (never lethal), self-surgery allowed. |
 | 2026-10-28 | Added P24: player cybernetic surgery (Doctor / Bio-Engineer), implemented on `feature/cybernetic-surgery` in dsrc, serverdata, swg-main; sandbox compile only. |
