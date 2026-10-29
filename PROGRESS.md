@@ -837,6 +837,40 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ---
 
+### P25 — Crafted container capacity from crafting quality (owner request 2026-10-28, option A approved incl. client change)
+
+**Goal:** Crafted furniture containers get a capacity based on crafting quality (resources OQ/DR + experimentation) instead of the fixed template 50.
+
+**Rule:** `capacity = base + (79 − base) × quality%`, `quality% = (current − min) / (max − min)` of the schematic's `quality` attribute; base = template capacity (50). So 50 at quality 0, 79 at a perfect craft. **Max 79, not 100:** `VolumeContainer::mayAdd` (shared engine code, server and client) refuses a container into a container whose capacity is not larger (`CEC_TooLarge`); player inventory is 80, so 80+ could no longer be picked up. Going higher needs that rule changed (owner decision, not done). Constant `CONTAINER_CAPACITY_MAX` in `crafting_base_furniture.java`.
+
+**Scope:** the 17 craftable 50-slot furniture containers (cheap / rustic / elegant / modern chests, cabinets, armoires, bookcases; large and medium toolchest), hand-crafted and factory-made (`OnManufactureObject` runs the same `calcAndSetPrototypeProperties`). Not: padawan pouch, backpacks (other crafting path), containers crafted before P25 (stay 50).
+
+**Design:**
+- Server C++ (`src`): `ServerObject::setContainerCapacityOverride` stores objvar `container.capacity` (1–1000) and sets the `VolumeContainer` limit; `applyContainerCapacityOverride` re-applies it in `ServerObject::endBaselines` after load. Loading contents never checks capacity (`VolumeContainer::depersistContents`), so no item can be lost on load. `ServerObject::sendObjectSpecificBaselinesToClient` sends `GenericValueTypeMessage<std::pair<NetworkId,int>> "SetContainerCapacityMessage"` after the object's baselines (same point as the PvP status message); a capacity change is also sent to current observers. JNI `_setContainerCapacity (JI)Z` in `ScriptMethodsContainers.cpp`.
+- Java (`dsrc`): `base_class.setContainerCapacity(obj_id, int)` (catches `UnsatisfiedLinkError` → false, so crafting keeps working on an old server binary); `crafting_base_furniture.applyCraftedContainerCapacity` in the `quality` branch, base remembered in objvar `container.capacity_base` (the prototype is recalculated after every experiment). Log tag `[containercap P25-1]` when the native is missing.
+- Client C++ (`client-tools`): `GroundScene` subscribes to `SetContainerCapacityMessage` and sets the local `VolumeContainer` limit, so drag/drop (`ContainerInterface::canTransferTo` → `mayAdd`) and the n/limit display match the server.
+
+**DEPLOY ORDER (critical):** the new GameServer registers native `_setContainerCapacity` at startup and **FATALs** (`JavaLibrary RegisterNatives fail`) if `script/base_class.class` does not declare it. Build the dsrc Java **before** starting the new GameServer binary.
+
+**Status (2026-10-28):** pushed, not built or tested.
+
+| Repo | Branch / commit | Content |
+|------|-----------------|---------|
+| src | `feature/crafted-container-capacity` `3b9faca9` | `ServerObject.h/.cpp`, `ScriptMethodsContainers.cpp`; syntax-checked with g++ in the sandbox (only pre-existing 32-bit-only errors), not built |
+| dsrc | `feature/crafted-container-capacity` `3ede84237`, `02d3fb8cd` | `base_class.java`, `systems/crafting/furniture/crafting_base_furniture.java`; compile in sandbox |
+| client-tools | `feature/crafted-container-capacity` `8f30e0a` | `clientGame/src/shared/scene/GroundScene.cpp`; not built |
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P25.1 | Server builds (`serverGame`, `serverScript`, `SwgGameServer`) and starts with the new Java | [ ] |
+| P25.2 | Client builds from `main` and starts | [ ] |
+| P25.3 | Low and high quality chest: capacity shown 50..79 matching quality, can fill up to it | [ ] |
+| P25.4 | After server restart the capacity stays; a full chest keeps all items | [ ] |
+| P25.5 | 79-slot chest can still be picked up into the inventory and dropped in a house | [ ] |
+| P25.6 | Factory-made container gets a capacity too | [ ] |
+
+---
+
 ## Completed projects
 
 ### P19 — No combat-level requirements on any item (armor, weapons, static items, consumables)
@@ -959,6 +993,7 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-24 | Added P21: Pasture for creature pets (roam on their own, retrieve) and mating (adult male + female of a species within 20 m for 1 h give a baby, pastured for the female owner or wild). dsrc + serverdata + swg-main `feature/pet-pasture` (compiles, untested). |
 | 2026-10-24 | P21 revised before merge: pasture in POB ships (stow/restore like P18), growth while pastured, stat inheritance with modifier for tamed and bio-engineered pets, attackable but downed-not-killed. dsrc `feature/pet-pasture` tip `c7aee75e2` (compiles, untested). |
 | 2026-10-27 | Added P23: cybernetics specialists missing in hospitals; static audit finds no code/data change in the spawn chain, server-side checks pending. |
+| 2026-10-28 | Added P25: crafted container capacity 50–79 from crafting quality (src + dsrc + client-tools), pushed, not built. |
 | 2026-10-28 | P24: failure severity weighted by surgeon skill; confirm window shows the real knockout risk. |
 | 2026-10-28 | P24: knockout and damage now follow how badly the surgery roll failed. |
 | 2026-10-28 | P24: failure health loss 20–99 % for every part, skewed by part size. |
