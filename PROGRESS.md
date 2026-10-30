@@ -871,6 +871,57 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ---
 
+### P28 — Pre-CU slicing restored (containers, keypads, terminals, HQ security, weapons, armor)
+
+**Goal:** Pre-CU Smugglers can slice again with the Pre-CU skill tree (owner request 2026-10-30).
+
+**Finding (audit, dsrc master `100803110`):** every slicing path was gated on the NGE class skill `class_smuggler_phase1_novice`; the Pre-CU commands `slice_containers`, `slice_terminals`, `slice_weaponsbasic`, `slice_armor`, `slice_weaponsadvanced` were granted by `skills.tab` but checked by no script. Weapon / armor slicing scripts detached themselves (CU-era system disabled in NGE). No locked container dropped anywhere (`player_loot_crate.iff` only in an unused column of `loot_items/mission/bounty.tab`), and the stock success path spawned `loot_crate.iff`, which destroys itself on init. Nothing granted `slicing` XP (`xp.SLICING` defined, unused), so Slicing I-IV were untrainable.
+
+**Design (all under `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/`):**
+
+- `library/slicing.java`: `canSlice(player, type)` = Pre-CU command for the type (container `slice_containers`; keypad / terminal / hq_security `slice_terminals`; weapon `slice_weaponsbasic`; armor `slice_armor`), NGE class skill kept as fallback. `startSlicing` keeps its callers and callbacks but now runs the original Pre-CU wire game with the surviving `slicing/slicing.stf` strings (`<type>_0`, `<type>_1`, `<type>_analyze_N`, `<type>_clamp_N`, `blue_cable`, `red_cable`, `use_clamp`, `use_analyzer`, `used_*`, `no_knife`...): needs a Precision Laser Knife (1 charge per cut), random correct cable, wrong first cut = fail, right first cut -> cut the second cable = success. Molecular Clamp shows the right cable; Flow Analyzer is right 65 % + 5 % per slicing level (max 95 %). One tool per attempt. Session times out after 180 s. Log channel `slicing`, tag `[PRECU-SLICE-1]`.
+- Outcomes: containers / keypads / terminals / HQ security use their existing callbacks (mission terminal: next mission reward x1.5, 120 s cooldown; keypad: door opens; HQ: objective disabled). Weapon: random +damage (min and max) or +speed, 10-25 % (Slicing II/III), 15-30 % (Slicing IV), 20-35 % (Master). Armor: random +effectiveness (general protection) 10-20 / 15-25 / 20-30 % or -encumbrance (all armor penalties, also lowers the soft-SQF armor tax) 15-30 / 25-40 / 30-50 %. One slice per item; a failed weapon/armor slice marks it broken forever. Data in objvars `precu_slice.*` (not `slicing.*`, which the NGE weapon conversion deletes).
+- Slicing XP on success: container 250, keypad 250, terminal 200, HQ security 500, weapon 600, armor 700.
+- Locked containers: humanoid NPCs (niche NPC, not storyteller, not tutorial) carry one 4 % of the time (`loot.addLoot` -> `slicing.addLockedCrateDrop`). The crate remembers the NPC's loot table and level; a successful slice puts 2-4 items from that table into the slicer's inventory and removes the crate (the radial refuses if fewer than 4 inventory slots are free).
+- Radial "Slice" (`SERVER_MENU6`) on weapons (`systems/combat/combat_weapon.java`, on every weapon via `base_weapon.tpf`) and crafted armor (`item/armor/new_armor.java`), shown for an item in the slicer's inventory, not equipped, not static, not a lightsaber, not already sliced. Examine shows `hacked1` (weapon) / `hacked` (armor) with e.g. "+18% damage".
+- Gates switched: `item/container/locked_slicable.java`, `theme_park/dungeon/keypad_handler.java`, `theme_park/dungeon/geonosian_madbio_bunker/office_keypad.java`, `systems/missions/base/mission_terminal.java`, `faction_perk/hq/objective_terminal_security.java` (repair speed by Pre-CU level too), `theme_park/dungeon/corvette/computer.java` (Slicing I = 3 ... Master = 7 on its 1-8 roll). `library/armor.java` `getFinalArmorPenalties` applies the encumbrance slice.
+- All numbers are constants at the top of the P28 block in `library/slicing.java`; `PRECU_SLICING_ENABLED` / `LOCKED_CRATE_DROPS_ENABLED` switch the whole thing / the drops off.
+
+**Status (2026-10-30):** dsrc `feature/precu-slicing` (tip `1dedd22e7`, 8 commits), all 13 changed files compile together (javac 17 `--release 11`, sourcepath). **Not built on the server, not tested in game.** No tables, strings, templates, client files or C++.
+
+**Deploy (after merge, from `~/repos/swg-main`):**
+
+```bash
+cd ~/repos/swg-main
+./utils/build_java_checked.sh dsrc/sku.0/sys.server/compiled/game/script/library/slicing.java dsrc/sku.0/sys.server/compiled/game/script/library/armor.java dsrc/sku.0/sys.server/compiled/game/script/library/loot.java dsrc/sku.0/sys.server/compiled/game/script/player/player_slicing.java dsrc/sku.0/sys.server/compiled/game/script/item/container/locked_slicable.java dsrc/sku.0/sys.server/compiled/game/script/item/container/player_loot_crate.java dsrc/sku.0/sys.server/compiled/game/script/systems/combat/combat_weapon.java dsrc/sku.0/sys.server/compiled/game/script/item/armor/new_armor.java dsrc/sku.0/sys.server/compiled/game/script/systems/missions/base/mission_terminal.java dsrc/sku.0/sys.server/compiled/game/script/theme_park/dungeon/keypad_handler.java dsrc/sku.0/sys.server/compiled/game/script/theme_park/dungeon/geonosian_madbio_bunker/office_keypad.java dsrc/sku.0/sys.server/compiled/game/script/faction_perk/hq/objective_terminal_security.java dsrc/sku.0/sys.server/compiled/game/script/theme_park/dungeon/corvette/computer.java
+grep -c -a -F "PRECU-SLICE-1" ~/repos/swg-main/data/sku.0/sys.server/compiled/game/script/library/slicing.class
+```
+
+The grep must print above 0. Restart GameServer. `library/slicing`, `library/armor` and `library/loot` are used by many scripts; javac inlines constants, so if a constant in the P28 block is changed later, rebuild every file in the list.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P28.1 | Static audit | [x] |
+| P28.2 | Locked crate drops from humanoid NPCs (owner approved by asking for slicing to work) | [~] code |
+| P28.3 | Pre-CU gates + wire minigame + container contents | [~] code |
+| P28.4 | Terminals / keypads / HQ / Corvette, weapons, armor, slicing XP | [~] code |
+| P28.5 | Merge dsrc, deploy (above), restart | [ ] |
+| P28.6 | Smoke tests (below) | [ ] |
+| P28.7 | Tune drop rate, XP, slice ranges, analyzer accuracy | [ ] |
+
+**Smoke tests:** (1) Smuggler Novice crafts a Precision Laser Knife (Novice schematic). (2) Kill humanoid NPCs until a "Locked Loot Crate" drops (4 %; for a quick test raise `LOCKED_CRATE_DROP_PERCENT`), loot it, radial "Slice": wire window; right wire then second wire -> "With a click the locking mechanism releases", 2-4 items in inventory, crate gone, slicing XP shown; wrong wire -> crate says broken, can't be sliced again. Knife loses a charge per cut. (3) Without the knife: "You need a Precision Laser Knife". Non-smuggler: no Slice radial. (4) Flow Analyzer / Molecular Clamp (craft at Slicing II / IV): option disappears after one use, tool consumed, prompt shows the reading. (5) Slicing I: mission terminal radial Slice -> success message, next mission pays more; second try within 120 s refused. (6) Slicing II: weapon in inventory (not equipped) -> Slice -> examine shows "+N% damage" or "+N% speed" and the stat changed; equip and fight; relog / restart keeps it; no second Slice option. (7) Slicing III: crafted armor -> "+N% effectiveness" (armor value up on examine) or "-N% encumbrance" (smaller armor penalty buffs when worn). (8) Dungeon keypad (Geonosian bunker) and Corvette computer with a Slicing I+ character. (9) Train Slicing I with the XP earned.
+
+**Unverified / risks:**
+- `~/repos/swg-main/dsrc/sku.0/sys.shared/compiled/game/datatables/skill/xp_limits.tab` caps `slicing` XP at 30000, Slicing IV costs 50000 (`skills.tab`). If the engine uses `xp_limits`, Slicing IV cannot be trained until that row is raised (not changed here, needs DataTableTool + client copy).
+- XP amounts, drop rate, ranges are guesses (Core3 used as reference only); weapon +damage under NGE math may be strong.
+- NGE dynamic (loot) armor and armor without `item.armor.new_armor` get no Slice radial; static items, lightsabers and power-up weapons are refused.
+- The NGE smuggler class (fallback) now also has to play the wire game and needs a knife (it used to auto-succeed on terminals).
+- Not touched: `theme_park/dungeon/diant_zuy/mainframe.java` (multi-profession NGE check), other `class_smuggler_*` uses that are not slicing (Imperial scans, EP3 conversations).
+
+**Revert:** set `slicing.PRECU_SLICING_ENABLED = false` and rebuild the list above (NGE behaviour returns except for weapon/armor radials, which then never show), or restore the 13 files from dsrc `master`.
+
+---
+
 ### P26 — Stuck pets: a pet more than 100 m behind its master is moved to the master (owner request 2026-10-30)
 
 **Goal:** Droids and other pets that lag more than 100 m behind the player are treated as stuck and placed at the player's position, then keep following.
@@ -1035,6 +1086,8 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-24 | Added P21: Pasture for creature pets (roam on their own, retrieve) and mating (adult male + female of a species within 20 m for 1 h give a baby, pastured for the female owner or wild). dsrc + serverdata + swg-main `feature/pet-pasture` (compiles, untested). |
 | 2026-10-24 | P21 revised before merge: pasture in POB ships (stow/restore like P18), growth while pastured, stat inheritance with modifier for tamed and bio-engineered pets, attackable but downed-not-killed. dsrc `feature/pet-pasture` tip `c7aee75e2` (compiles, untested). |
 | 2026-10-27 | Added P23: cybernetics specialists missing in hospitals; static audit finds no code/data change in the spawn chain, server-side checks pending. |
+| 2026-10-30 | Added P28: container slicing audit; gated on NGE class skill and no locked crate drops (no code change). |
+| 2026-10-30 | P28: Pre-CU slicing restored (wire game, containers, terminals, weapons, armor, slicing XP, locked crate drops). dsrc `feature/precu-slicing` (compiles, untested). |
 | 2026-10-30 | Added P27: `/pvp` combatant / sf / leave / status / help self-service faction duty (dsrc `feature/pvp-self-duty`, compiles, untested). |
 | 2026-10-30 | Added P26: pets more than 100 m behind a following master are moved to the master (dsrc `feature/pet-leash-teleport`, compiles, untested). |
 | 2026-10-28 | Added P25: crafted container capacity 50–79 from crafting quality (src + dsrc + client-tools), pushed, not built. |
