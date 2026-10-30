@@ -894,6 +894,25 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ---
 
+### P27 — Faction duty without a recruiter: `/pvp` arguments (owner request 2026-10-30)
+
+**Goal:** A Rebel or Imperial player can change faction duty (On Leave / Combatant / Special Forces) anywhere, without looking for a recruiter.
+
+**Finding:** the stock `/pvp` command (`command_table.tab` row `pvp`, empty `characterAbility` = every player, script hook `cmdPVP` in `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/player/player_faction.java`, attached to every player via `base_player.tpf`) already exists: On Leave -> Combatant (1 s), Combatant <-> Special Forces (30 s / 300 s). It had no way back to On Leave and no status view. Cloning puts a Combatant / Special Forces player On Leave (`handleCloneRespawn`), which is why players kept needing a recruiter.
+
+**Change (dsrc `feature/pvp-self-duty`, `0c52dc39d`, build tag `PVPDUTY-1`, compiles with javac 17 `--release 11`, NOT deployed or tested):** `/pvp` without arguments unchanged. New: `/pvp combatant` (alias `covert`, `on`, `duty`), `/pvp sf` (alias `overt`, `special`, `specialforces`), `/pvp leave` (alias `onleave`, `off`; 300 s like the recruiter), `/pvp status`, `/pvp help`. Enclave (Force Rank) members cannot go Combatant or On Leave. Out of combat only (table `S:combat=0`, unchanged). Delays are constants `DUTY_DELAY_*` at the top of `cmdPVP`. No tables, strings or client files.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P27.1 | `/pvp` arguments in `player_faction.java` | [~] compiles, untested |
+| P27.2 | Merge dsrc PR, `./utils/build_java_checked.sh dsrc/sku.0/sys.server/compiled/game/script/player/player_faction.java`, verify `grep -c -a -F "PVPDUTY-1" ~/repos/swg-main/data/sku.0/sys.server/compiled/game/script/player/player_faction.class` above 0, restart GameServer | [ ] |
+| P27.3 | In-game: `/pvp status`; from On Leave `/pvp combatant` (1 s) and `/pvp sf` (30 s); `/pvp leave` (300 s); second request while one is pending is refused; neutral player gets "not aligned"; `/pvp` alone still cycles | [ ] |
+| P27.4 | Owner decision 2026-10-30: cloning still puts players On Leave (stock `handleCloneRespawn` kept); `/pvp combatant` or `/pvp sf` is the way back | [x] |
+
+**Revert:** restore `player_faction.java` from dsrc `master`.
+
+---
+
 ## Completed projects
 
 ### P19 — No combat-level requirements on any item (armor, weapons, static items, consumables)
@@ -1016,6 +1035,7 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-24 | Added P21: Pasture for creature pets (roam on their own, retrieve) and mating (adult male + female of a species within 20 m for 1 h give a baby, pastured for the female owner or wild). dsrc + serverdata + swg-main `feature/pet-pasture` (compiles, untested). |
 | 2026-10-24 | P21 revised before merge: pasture in POB ships (stow/restore like P18), growth while pastured, stat inheritance with modifier for tamed and bio-engineered pets, attackable but downed-not-killed. dsrc `feature/pet-pasture` tip `c7aee75e2` (compiles, untested). |
 | 2026-10-27 | Added P23: cybernetics specialists missing in hospitals; static audit finds no code/data change in the spawn chain, server-side checks pending. |
+| 2026-10-30 | Added P27: `/pvp` combatant / sf / leave / status / help self-service faction duty (dsrc `feature/pvp-self-duty`, compiles, untested). |
 | 2026-10-30 | Added P26: pets more than 100 m behind a following master are moved to the master (dsrc `feature/pet-leash-teleport`, compiles, untested). |
 | 2026-10-28 | Added P25: crafted container capacity 50–79 from crafting quality (src + dsrc + client-tools), pushed, not built. |
 | 2026-10-28 | P24: failure severity weighted by surgeon skill; confirm window shows the real knockout risk. |
