@@ -907,7 +907,7 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 | P27.1 | `/pvp` arguments in `player_faction.java` | [~] compiles, untested |
 | P27.2 | Merge dsrc PR, `./utils/build_java_checked.sh dsrc/sku.0/sys.server/compiled/game/script/player/player_faction.java`, verify `grep -c -a -F "PVPDUTY-1" ~/repos/swg-main/data/sku.0/sys.server/compiled/game/script/player/player_faction.class` above 0, restart GameServer | [ ] |
 | P27.3 | In-game: `/pvp status`; from On Leave `/pvp combatant` (1 s) and `/pvp sf` (30 s); `/pvp leave` (300 s); second request while one is pending is refused; neutral player gets "not aligned"; `/pvp` alone still cycles | [ ] |
-| P27.4 | Open owner decision: keep duty status after cloning instead of going On Leave (`handleCloneRespawn`) | [ ] |
+| P27.4 | Owner decision 2026-10-30: cloning still puts players On Leave (stock `handleCloneRespawn` kept); `/pvp combatant` or `/pvp sf` is the way back | [x] |
 
 **Revert:** restore `player_faction.java` from dsrc `master`.
 
