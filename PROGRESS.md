@@ -1035,7 +1035,7 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-24 | Added P21: Pasture for creature pets (roam on their own, retrieve) and mating (adult male + female of a species within 20 m for 1 h give a baby, pastured for the female owner or wild). dsrc + serverdata + swg-main `feature/pet-pasture` (compiles, untested). |
 | 2026-10-24 | P21 revised before merge: pasture in POB ships (stow/restore like P18), growth while pastured, stat inheritance with modifier for tamed and bio-engineered pets, attackable but downed-not-killed. dsrc `feature/pet-pasture` tip `c7aee75e2` (compiles, untested). |
 | 2026-10-27 | Added P23: cybernetics specialists missing in hospitals; static audit finds no code/data change in the spawn chain, server-side checks pending. |
-| 2026-10-30 | Added P27: `/pvp combatant|sf|leave|status|help` self-service faction duty (dsrc `feature/pvp-self-duty`, compiles, untested). |
+| 2026-10-30 | Added P27: `/pvp` combatant / sf / leave / status / help self-service faction duty (dsrc `feature/pvp-self-duty`, compiles, untested). |
 | 2026-10-30 | Added P26: pets more than 100 m behind a following master are moved to the master (dsrc `feature/pet-leash-teleport`, compiles, untested). |
 | 2026-10-28 | Added P25: crafted container capacity 50–79 from crafting quality (src + dsrc + client-tools), pushed, not built. |
 | 2026-10-28 | P24: failure severity weighted by surgeon skill; confirm window shows the real knockout risk. |
