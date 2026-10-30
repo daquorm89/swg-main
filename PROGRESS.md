@@ -871,6 +871,26 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ---
 
+### P28 — Container slicing (Smuggler): never reachable (owner question 2026-10-30)
+
+**Question:** Pre-CU Smuggler novice grants `slice_containers`, but no sliceable container was ever seen.
+
+**Finding (static, dsrc master `100803110`, not tested in game):** the system exists but is dead on this server, for two independent reasons.
+
+1. **Gate is the NGE class skill.** `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/item/container/locked_slicable.java` shows the "Slice" radial only with `hasSkill(player, "class_smuggler_phase1_novice")`. `library/slicing.slicingQuery` for type `container` reads skill mod `slice_container` (granted by nothing), and only auto-succeeds for the same NGE class skill; anyone else gets `slicing/slicing:no_skill`. The Pre-CU commands `slice_containers`, `slice_terminals`, `slice_weaponsbasic`, `slice_armor`, `slice_weaponsadvanced` (skills.tab, `combat_smuggler_novice` / `combat_smuggler_slicing_01..04`) are checked by no script.
+2. **No locked container drops.** The only sliceable container is `object/tangible/container/loot/player_loot_crate.iff` (script `item.container.player_loot_crate`, extends `locked_slicable`; success turns it into an open `loot_crate.iff`). It is listed only in column `general` of `~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/datatables/loot/loot_items/mission/bounty.tab`, and the live loot type `loot_types/npc/mission_bounty.tab` only uses that file's `armor_schematic` column. The old `master_loot.tab` that used `general` is not read by any script. Dungeon chests (`item.container.loot_crate`) are not locked.
+
+Same NGE gate (not investigated further): terminal slicing (`theme_park/dungeon/keypad_handler`, corvette `computer`, `mission_terminal`, `faction_perk/hq/objective_terminal_security`) and weapon/armor slicing (`slice_weapon` / `slice_armor` skill mods) — 20 scripts check `class_smuggler_phase1_novice`.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P28.1 | Static audit (above) | [x] |
+| P28.2 | Owner decision: put locked crates back into a live loot table (loot is out of scope per WORKFLOW §1, needs explicit approval) | [ ] |
+| P28.3 | Gate `locked_slicable` + `slicing.slicingQuery("container")` on `hasCommand(player, "slice_containers")` (keep NGE class as fallback) | [ ] |
+| P28.4 | Optional: same reconnect for terminals / weapons / armor (`slice_terminals`, `slice_weaponsbasic`, `slice_armor`, `slice_weaponsadvanced`) | [ ] |
+
+---
+
 ### P26 — Stuck pets: a pet more than 100 m behind its master is moved to the master (owner request 2026-10-30)
 
 **Goal:** Droids and other pets that lag more than 100 m behind the player are treated as stuck and placed at the player's position, then keep following.
@@ -1035,6 +1055,7 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-24 | Added P21: Pasture for creature pets (roam on their own, retrieve) and mating (adult male + female of a species within 20 m for 1 h give a baby, pastured for the female owner or wild). dsrc + serverdata + swg-main `feature/pet-pasture` (compiles, untested). |
 | 2026-10-24 | P21 revised before merge: pasture in POB ships (stow/restore like P18), growth while pastured, stat inheritance with modifier for tamed and bio-engineered pets, attackable but downed-not-killed. dsrc `feature/pet-pasture` tip `c7aee75e2` (compiles, untested). |
 | 2026-10-27 | Added P23: cybernetics specialists missing in hospitals; static audit finds no code/data change in the spawn chain, server-side checks pending. |
+| 2026-10-30 | Added P28: container slicing audit; gated on NGE class skill and no locked crate drops (no code change). |
 | 2026-10-30 | Added P27: `/pvp` combatant / sf / leave / status / help self-service faction duty (dsrc `feature/pvp-self-duty`, compiles, untested). |
 | 2026-10-30 | Added P26: pets more than 100 m behind a following master are moved to the master (dsrc `feature/pet-leash-teleport`, compiles, untested). |
 | 2026-10-28 | Added P25: crafted container capacity 50–79 from crafting quality (src + dsrc + client-tools), pushed, not built. |
