@@ -871,6 +871,29 @@ Smoke after rebuilding the client: pistol fired in several directions across the
 
 ---
 
+### P26 — Stuck pets: a pet more than 100 m behind its master is moved to the master (owner request 2026-10-30)
+
+**Goal:** Droids and other pets that lag more than 100 m behind the player are treated as stuck and placed at the player's position, then keep following.
+
+**Design (`~/repos/swg-main/dsrc/sku.0/sys.server/compiled/game/script/ai/pet.java` only; no tables, strings, client files or C++):**
+
+- `handleSetupPet` (runs on attach and every time a pet enters the world) starts a check loop `handlePetLeashCheck` every 5 s (`PET_LEASH_CHECK_SEC`); a generation scriptvar `pet.leash.gen` stops older loops. The loop ends by itself when `ai.pet` is detached (stored, Set Loose, Pasture).
+- Teleport only when ALL hold: the pet follows its master (`ai.persistantFollowing` target = master, or formation leader `ai.inFormation` = master); distance between world positions > 100 m (`PET_LEASH_DISTANCE`), same planet; pet alive, not incapacitated, not in combat, not ridden, not on Stay (`ai.pet.staying`), not a stationed droid; master loaded and alive; not a space scene; master not inside a ship (POB interior or cockpit: the pet waits and is moved once the master is out).
+- Destination: master's location (cell included, so a pet joins its master inside a building); a mounted master uses the mount's location. Then the follow (or formation slot) is re-issued with `ai_lib.resumeFollow` / `ai_lib.resumeFormationFollowing` (no `stop()`, which is known to freeze mounts).
+- Log line per teleport: `LOG pet_leash` `[PETLEASH-1] pet .. was .. m behind master .., moved to ..`. Switch: `PET_LEASH_ENABLED`.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P26.1 | Leash loop in `ai/pet.java`, dsrc `feature/pet-leash-teleport` (`2258b16d7`), compiles (javac 17 `--release 11`, sourcepath) | [~] code only |
+| P26.2 | Merge dsrc PR, bump swg-main dsrc pin, `./utils/build_java_checked.sh dsrc/sku.0/sys.server/compiled/game/script/ai/pet.java`, verify `grep -c -a -F "PETLEASH-1" ~/repos/swg-main/data/sku.0/sys.server/compiled/game/script/ai/pet.class` above 0, restart GameServer | [ ] |
+| P26.3 | In-game: run/mount away from a droid and a creature pet (> 100 m, e.g. pet stuck behind a rock or on a ledge): within ~5 s it appears at you and follows. Pet on Stay, pet in combat, ridden mount, pet left while you sit in a POB ship: NOT moved. Walk into a building: a stuck pet appears inside with you. Multi-droid wedge/column keeps its slots after a teleport | [ ] |
+
+**Unverified:** that `getLocation(mount)` is a sensible spot for a mounted master (rider is contained by the mount); the loop does not survive a server restart on its own but pets are re-set up by `OnAddedToWorld`.
+
+**Revert:** set `PET_LEASH_ENABLED = false` and rebuild `ai/pet.java`, or restore the file from dsrc `master`.
+
+---
+
 ## Completed projects
 
 ### P19 — No combat-level requirements on any item (armor, weapons, static items, consumables)
@@ -993,6 +1016,7 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-24 | Added P21: Pasture for creature pets (roam on their own, retrieve) and mating (adult male + female of a species within 20 m for 1 h give a baby, pastured for the female owner or wild). dsrc + serverdata + swg-main `feature/pet-pasture` (compiles, untested). |
 | 2026-10-24 | P21 revised before merge: pasture in POB ships (stow/restore like P18), growth while pastured, stat inheritance with modifier for tamed and bio-engineered pets, attackable but downed-not-killed. dsrc `feature/pet-pasture` tip `c7aee75e2` (compiles, untested). |
 | 2026-10-27 | Added P23: cybernetics specialists missing in hospitals; static audit finds no code/data change in the spawn chain, server-side checks pending. |
+| 2026-10-30 | Added P26: pets more than 100 m behind a following master are moved to the master (dsrc `feature/pet-leash-teleport`, compiles, untested). |
 | 2026-10-28 | Added P25: crafted container capacity 50–79 from crafting quality (src + dsrc + client-tools), pushed, not built. |
 | 2026-10-28 | P24: failure severity weighted by surgeon skill; confirm window shows the real knockout risk. |
 | 2026-10-28 | P24: knockout and damage now follow how badly the surgery roll failed. |
