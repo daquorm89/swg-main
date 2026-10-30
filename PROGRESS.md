@@ -966,6 +966,8 @@ The grep must print above 0. Restart GameServer. `library/slicing`, `library/arm
 
 **Revert:** restore `player_faction.java` from dsrc `master`.
 
+**Update 9 (2026-10-17):** Turret Defense showed raw text instead of a name. Cause: no string entries existed for `droidcommand_turretdefense` in `cmd_n.stf`, `cmd_d.stf` or `space/droid_commands.stf` (compare the wingmen programs, P11). serverdata `feature/turret-defense-strings` (`1f4f4555f`) adds: `cmd_n` and `cmd_d`: `droid+droidcommand_turretdefense` and `droidcommand_turretdefense`; `space/droid_commands`: `droidcommand_turretdefense`, `_chipname`, `_commandname`, `_description`, `droid+droidcommand_turretdefense`. English only (no `ja`). All existing entries verified unchanged, names kept sorted, ids unique. Edited with the new `tools/stf_edit.py` (`check`, `dump`, `set`; round trip verified byte-identical on all three files; the names section has no count and the engine binary-searches names). Client needs all three `.stf` files copied. Not verified in game.
+
 ---
 
 ## Completed projects
