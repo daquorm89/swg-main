@@ -970,6 +970,31 @@ The grep must print above 0. Restart GameServer. `library/slicing`, `library/arm
 
 ---
 
+### P29 — Enzyme extractor usable by Pre-CU Bio-Engineers (owner request 2026-10-31)
+
+**Goal:** The enzyme extractor (radial "Extract Type 3 Enzyme" on a creature corpse) works for a Pre-CU Bio-Engineer, not only for an NGE Beast Master.
+
+**Finding:** the only Beast Master dependency in extraction is the first check in `beast_lib.getEnzymeExtractionReturnCode` (`isBeastMaster` = skill mod `expertise_bm_base_mod` > 0), which a Pre-CU character never has. The yield in `beast_lib.generateTypeThreeEnzyme` reads the NGE mod `expertise_bm_genetic_engineering` (max 125, 30+30+40+25), which is 0 for Pre-CU, and divides by `getLevel(player)` (division by zero / NaN purity at level 0). The extractor's parts are already craftable by Pre-CU crafters (tailor / droid engineer / munitions groups). `isBeastMaster` is used ~57 times (combat, buffs, incubator) and is NOT changed.
+
+**Change (dsrc `feature/precu-enzyme-extractor`, `7959e1110`, tag `PRECU-ENZ-1`, compiles with javac 17 `--release 11`, NOT deployed or tested):**
+
+- `beast_lib.canUseEnzymeExtractor(player)`: Beast Master OR `outdoors_bio_engineer_novice`; used by `getEnzymeExtractionReturnCode`.
+- `beast_lib.getEnzymeExtractionSkillMod(player)`: higher of the NGE mod and `dna_harvesting x 1.25` for Bio-Engineers (master BE 100 -> 125 = NGE max), so a master Bio-Engineer gets the same top yield as a full Beast Master.
+- Player level clamped to at least 1 in the yield formula.
+- `systems/beast/enzyme_extractor.java`: refusal message now reads "Only a Bio-Engineer or Beast Master can use an enzyme extractor." (plain text, no string table change).
+- Switch `beast_lib.PRECU_ENZYME_EXTRACTOR_ENABLED` (false = Beast Master only again).
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P29.1 | Gate + yield + message | [~] compiles, untested |
+| P29.2 | Merge dsrc PR, bump swg-main dsrc pin, `./utils/build_java_checked.sh dsrc/sku.0/sys.server/compiled/game/script/library/beast_lib.java dsrc/sku.0/sys.server/compiled/game/script/systems/beast/enzyme_extractor.java`, verify `grep -c -a -F "PRECU-ENZ-1" ~/repos/swg-main/data/sku.0/sys.server/compiled/game/script/library/beast_lib.class` above 0, restart GameServer | [ ] |
+| P29.3 | In-game: Novice Bio-Engineer kills a creature, targets the corpse, uses the extractor: Type 3 enzyme in inventory, extractor count drops; non-Bio-Engineer gets the new refusal message; second extraction on the same corpse refused; Master Bio-Engineer enzymes noticeably higher purity/mutagen than Novice | [ ] |
+| P29.4 | Open owner decision: the enzyme processing stations (`enzyme_crafting_centrifuge` / `_processor` / `_combiner`), incubator and beast eggs are still Beast Master only, so a Bio-Engineer can extract but not yet process or use the enzymes | [ ] |
+
+**Revert:** set `PRECU_ENZYME_EXTRACTOR_ENABLED = false` and rebuild both files, or restore them from dsrc `master`.
+
+---
+
 ## Completed projects
 
 ### P19 — No combat-level requirements on any item (armor, weapons, static items, consumables)
@@ -1101,6 +1126,7 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-24 | Added P21: Pasture for creature pets (roam on their own, retrieve) and mating (adult male + female of a species within 20 m for 1 h give a baby, pastured for the female owner or wild). dsrc + serverdata + swg-main `feature/pet-pasture` (compiles, untested). |
 | 2026-10-24 | P21 revised before merge: pasture in POB ships (stow/restore like P18), growth while pastured, stat inheritance with modifier for tamed and bio-engineered pets, attackable but downed-not-killed. dsrc `feature/pet-pasture` tip `c7aee75e2` (compiles, untested). |
 | 2026-10-27 | Added P23: cybernetics specialists missing in hospitals; static audit finds no code/data change in the spawn chain, server-side checks pending. |
+| 2026-10-31 | Added P29: enzyme extractor usable by Pre-CU Bio-Engineers (dsrc `feature/precu-enzyme-extractor`, compiles, untested). |
 | 2026-10-30 | Added P28: container slicing audit; gated on NGE class skill and no locked crate drops (no code change). |
 | 2026-10-30 | P28: Pre-CU slicing restored (wire game, containers, terminals, weapons, armor, slicing XP, locked crate drops). dsrc `feature/precu-slicing` (compiles, untested). |
 | 2026-10-30 | Added P27: `/pvp` combatant / sf / leave / status / help self-service faction duty (dsrc `feature/pvp-self-duty`, compiles, untested). |
