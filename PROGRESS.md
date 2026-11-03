@@ -999,6 +999,36 @@ The grep must print above 0. Restart GameServer. `library/slicing`, `library/arm
 
 ---
 
+### P31 — Cybernetics block armor in the slots they are installed in (owner request 2026-11-03)
+
+**Goal:** An installed cybernetic must not stop the player from wearing armor on the same body part.
+
+**Finding:** the arrangement files in `dsrc/sku.0/sys.shared/compiled/game/abstract/slot/arrangement/wearables/` listed armor slots, and one arrangement occupies every slot it lists: cybernetic arm = `bracer_upper`, `bracer_lower`, `bicep`, `cybernetic_hand`; forearm = `bracer_upper`, `bracer_lower`, `cybernetic_hand`; legs = `pants1`, `pants2`, `shoes`; torso = `chest2`, `chest3_l`, `chest3_r`. The player slot descriptor had no cybernetic slots except `cybernetic_hand_l/r`. The client cybernetics window also looks for installed parts in fixed slots (`bracer_lower_l/r`, `pants1`, `chest2`), so a server-only change would break that window.
+
+**Change (dsrc and client-tools branch `feature/cybernetic-own-slots`, compiles in the sandbox, NOT deployed or tested):**
+
+- dsrc `slot_definitions.mif` and `descriptor/player.mif`: four new slots appended (ids of existing slots unchanged): `cybernetic_arm_l`, `cybernetic_arm_r`, `cybernetic_legs`, `cybernetic_torso`. Hardpoint and combat-bone values copy the armor slots they replace (so limb hits still find the part).
+- dsrc arrangements: arm and forearm occupy `cybernetic_arm_l/r` + `cybernetic_hand_l/r` (still mutually exclusive with each other); legs occupy `cybernetic_legs`; torso occupies `cybernetic_torso`. Nothing else.
+- dsrc `library/cybernetic.java`: `applyDeathCybernetic` no longer unequips armor before creating the part.
+- client-tools: `SwgCuiCybernetics.cpp`, `SwgCuiInventory.cpp`, `SwgCuiCharacterSheet.cpp` use the new slot names; `CreatureObject.cpp` underwear check counts `cybernetic_torso` / `cybernetic_legs` as worn.
+- Not changed on purpose: `SwgCuiAppearanceTab.cpp` (its list is appearance slots; armor slots stay there), `appearance_inventory.mif`, `serverdata`, `src`.
+- Existing characters: cybernetics already installed sit in the old armor slots. Owner said test characters only, so no migration; remove and reinstall the part on those.
+
+| ID | Sub-target | Status |
+|----|------------|--------|
+| P31.1 | dsrc slot data + arrangements + `cybernetic.java` (pushed) | [~] untested |
+| P31.2 | client-tools slot lists (pushed) | [~] untested |
+| P31.3 | Merge dsrc PR, bump swg-main dsrc pin, compile the 8 `.mif` files (see deploy), rebuild `cybernetic.java`, restart GameServer | [ ] |
+| P31.4 | Stage the shared IFFs to the client and rebuild/deploy `SwgClient_r.exe` from `main` | [ ] |
+| P31.5 | In-game: reinstall a cybernetic arm/legs/torso on a test character; part shows in the Cybernetics window and Character Sheet; armor can be worn on bicep, bracer, chest, pants, boots at the same spot; two arm-type parts on the same side still refused; no underwear drawn over a cybernetic torso/legs | [ ] |
+| P31.6 | Open risk: the client may need hardpoint/appearance data for the new slot names; if a part is invisible in the world, look there first | [ ] |
+
+**Deploy (server, from `~/repos/swg-main`, after the dsrc PR is merged and the pin bumped):** compile with `./exe/linux/bin/Miff -i dsrc/<path>.mif -o data/<path>.iff` for each of: `sku.0/sys.shared/compiled/game/abstract/slot/slot_definition/slot_definitions.mif`, `.../descriptor/player.mif`, and `.../arrangement/wearables/cybernetic_arm_l.mif`, `cybernetic_arm_r.mif`, `cybernetic_forearm_l.mif`, `cybernetic_forearm_r.mif`, `cybernetic_leg.mif`, `cybernetic_torso.mif` (or run `./utils/build_miff.sh`). Then copy each new `.iff` over every other copy (`find ~/repos/swg-main -name '<file>.iff'`), `./utils/build_java_checked.sh dsrc/sku.0/sys.server/compiled/game/script/library/cybernetic.java`, restart GameServer. Client: stage the same 8 IFFs at game paths `abstract/slot/...`, rebuild `SwgClient` (Release | Win32) from `main` after merging client-tools.
+
+**Revert:** restore the 8 `.mif` files and `cybernetic.java` from dsrc `master`, recompile and redeploy them (server and client), restore the four client `.cpp` files from `main` and rebuild.
+
+---
+
 ## Completed projects
 
 ### P19 — No combat-level requirements on any item (armor, weapons, static items, consumables)
@@ -1146,3 +1176,4 @@ Captured for agents so scope estimates stay tied to the trees (NGE `dsrc`/`src` 
 | 2026-10-28 | P24: knockout of a weakened patient is now lethal (owner), warnings added. |
 | 2026-10-28 | P24 revised: size-based failure damage with knockout (never lethal), self-surgery allowed. |
 | 2026-10-28 | Added P24: player cybernetic surgery (Doctor / Bio-Engineer), implemented on `feature/cybernetic-surgery` in dsrc, serverdata, swg-main; sandbox compile only. |
+| 2026-11-03 | Added P31: cybernetics get dedicated slots so they no longer block armor; dsrc + client-tools `feature/cybernetic-own-slots`, compiles in the sandbox, untested. |
